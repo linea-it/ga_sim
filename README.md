@@ -43,7 +43,6 @@ The tables with isochrone's data were downloaded from [CMD web interface](http:/
 
 The code is written in Python 3.X. The following libraries are mandatory to run the code:
 
-<p align="right">(<a href="#top">back to top</a>)</p>
 * [os](https://docs.python.org/3/library/os.html)
 * [healpy](https://healpy.readthedocs.io/en/latest/)
 * [numpy](https://numpy.org/)
@@ -55,7 +54,7 @@ The code is written in Python 3.X. The following libraries are mandatory to run 
 * [scipy](https://scipy.org/)
 * [itertools](https://docs.python.org/3/library/itertools.html)
 * [parsl](https://parsl-project.org/)
-<p align="right">(<a href="#top">back to top</a>)</p>
+
 
 <!-- ABOUT THE PROJECT -->
 ## About The Project
