@@ -14,7 +14,7 @@ from gawa_simulations.gawa import (
     split_output_hpx,
     SplitFtpHPX,
     radec2GCdist,
-    RemoveCloseStars,
+    remove_close_stars,
 )
 from gawa_simulations.plot import (
     unnamed_plot,

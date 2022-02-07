@@ -88,7 +88,9 @@ def get_av(gal_l, gal_b, ngp, sgp):
     return av
 
 
-def make_footprint(ra_min, ra_max, dec_min, dec_max, nside_ftp):
+def make_footprint(
+    ra_min, ra_max, dec_min, dec_max, nside_ftp, output_path=Path("results")
+):
     """Creates a partial HealPix map based on the area selected,
     with nside = nside_ftp
 
@@ -115,6 +117,9 @@ def make_footprint(ra_min, ra_max, dec_min, dec_max, nside_ftp):
         nside_ftp, vertices, inclusive=False, fact=64, nest=True, buff=None
     )
 
+    filename = "ftp_4096_nest.fits"
+    filepath = Path(output_path, filename)
+
     # m = np.bincount(hp_sample, minlength=hp.nside2npix(nside_ftp))
 
     # hp.mollview(m, nest=True, flip='astro')
@@ -125,7 +130,7 @@ def make_footprint(ra_min, ra_max, dec_min, dec_max, nside_ftp):
 
     cols = fits.ColDefs([col0, col1])
     tbhdu = fits.BinTableHDU.from_columns(cols)
-    tbhdu.writeto("ftp_4096_nest.fits", overwrite=True)
+    tbhdu.writeto(filepath, overwrite=True)
 
     return hp_sample
 
@@ -331,6 +336,7 @@ def faker(
     err1_,
     err2_,
     file_iso,
+    output_path=Path("results/fake_clus"),
 ):
     """Creates an array with positions, magnitudes, magnitude errors and magnitude
     uncertainties for the simulated stars in two bands.
@@ -384,6 +390,10 @@ def faker(
     err2_ : TODO: Documentar este parametro
     file_iso : TODO: Documentar este parametro
     """
+
+    # Cria o diretório de output se não existir
+    output_path = Path(output_path)
+    output_path.mkdir(parents=True, exist_ok=True)
 
     mass, mag1, mag2 = np.loadtxt(file_iso, usecols=(3, 29, 30), unpack=True)
 
@@ -506,7 +516,8 @@ def faker(
     star[:, 1] = y0 + r_ell * np.cos(phi_ell)
 
     # TODO: A criação deste arquivo poderia em formato csv
-    filepath = "results/%s_clus.dat" % str(hpx)
+    filename = "%s_clus.dat" % str(hpx)
+    filepath = Path(output_path, filename)
     with open(filepath, "w") as out_file:
         for ii in aaaa:  # range(len(star[:,0])):
             cor = star[ii, 2] + star[ii, 3] - (star[ii, 5] + star[ii, 6])
@@ -543,6 +554,8 @@ def join_cat(
     mmin,
     cmin,
     cmax,
+    input_path=Path("results/fake_clus"),
+    output_path=Path("results"),
 ):
     """Join the catalog of real stars with random position
     and all the small catalogs of simulated clusters into a single one.
@@ -558,9 +571,8 @@ def join_cat(
 
     for j in range(len(hp_sample_un)):
         try:
-            # TODO: Se alterar o path de resultados da função faker
-            # Vai alterar o path de leitura dessa função.
-            filepath = Path("results", "%s_clus.dat" % hp_sample_un[j])
+            # input_path = Diretório onde se encontram os arquivos _clus.
+            filepath = Path(input_path, "%s_clus.dat" % hp_sample_un[j])
             (
                 RA_clus,
                 DEC_clus,
@@ -605,7 +617,7 @@ def join_cat(
         except:
             print("zero stars in ", hp_sample_un[j])
 
-    filepath = Path("results", "%s_mockcat_for_detection.fits" % survey)
+    filepath = Path(output_path, "%s_mockcat_for_detection.fits" % survey)
 
     HPX64 = hp.ang2pix(nside_ini, RA, DEC, nest=True, lonlat=True)
     col0 = fits.Column(name="GC", format="I", array=GC)
@@ -712,7 +724,9 @@ def snr_estimate(
     return len(r_star[r_star < inner_circle]) / np.sqrt(N_bg_equal_area)
 
 
-def write_sim_clus_features(mockcat, hp_sample_un, nside_ini, mM):
+def write_sim_clus_features(
+    mockcat, hp_sample_un, nside_ini, mM, output_path=Path("results")
+):
     """
     Write a few features of the clusters in a file called 'N_stars,dat'.
     The columns of the file are:
@@ -740,8 +754,7 @@ def write_sim_clus_features(mockcat, hp_sample_un, nside_ini, mM):
     MAGERR_R = hdu[1].data.field("magerr_r")
     HPX64 = hdu[1].data.field("HPX64")
 
-    # TODO: A criação deste arquivo pode ser melhorada.
-    filepath = Path("results", "N_stars.dat")
+    filepath = Path(output_path, "n_stars.dat")
 
     with open(filepath, "w") as out_file:
         for j in range(len(hp_sample_un)):
@@ -890,7 +903,7 @@ def radec2GCdist(ra, dec, dist_kpc):
     return np.sqrt(x * x + y * y + z * z)
 
 
-def RemoveCloseStars(name_cat, output_cat, PSF_factor, nside_ini):
+def remove_close_stars(input_cat, output_cat, nside_ini):
     """This function removes the stars closer than PSF_factor * PSF_size
     This is an observational bias of the DES since the photometric pipeline
     is set to join regions closer than an specific distance.
@@ -902,7 +915,7 @@ def RemoveCloseStars(name_cat, output_cat, PSF_factor, nside_ini):
 
     Parameters
     ----------
-    name_cat : str
+    input_cat : str
         The file with the information of the objects
     output_cat : str
         The output file to be written with the stars that survived the test.
@@ -912,9 +925,13 @@ def RemoveCloseStars(name_cat, output_cat, PSF_factor, nside_ini):
         is less than PSF_factor * PSF_size, none of the objects survives.
 
     """
+    input_cat = Path(input_cat)
+    output_cat = Path(output_cat)
+    # TODO: Parametro PSF_factor não está sendo usado conferir se é necessário.
+
     # TODO: Variaveis instanciadas mas não utilizadas
     PSF_size = 0.8  # arcsec
-    hdu = fits.open(name_cat, memmap=True)
+    hdu = fits.open(input_cat, memmap=True)
     GC = hdu[1].data.field("GC")
     ra = hdu[1].data.field("ra")
     dec = hdu[1].data.field("dec")
@@ -974,3 +991,5 @@ def RemoveCloseStars(name_cat, output_cat, PSF_factor, nside_ini):
     cols = fits.ColDefs([col0, col1, col2, col3, col4, col5, col6, col7])
     tbhdu = fits.BinTableHDU.from_columns(cols)
     tbhdu.writeto(output_cat, overwrite=True)
+
+    return output_cat

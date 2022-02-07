@@ -215,24 +215,40 @@ def plots_ang_size(
     plt.show()
 
 
-def plots_ref(FeH_iso):
+def plots_ref(
+    FeH_iso,
+    star_clusters_simulated=Path("results/star_clusters_simulated.dat"),
+    output_plots=Path("results"),
+):
     """Make a few plots about the simulated clusters"""
+    # TODO: Talves separar os plots em funções diferentes.
 
+    catalogs_path = Path("catalogs")
+
+    # Catalogo objects_in_ref.dat
+    obj_ref_filepath = Path(catalogs_path, "objects_in_ref.dat")
     ra_DG, dec_DG, dist_kpc_obj, Mv_obj, rhl_pc_obj, FeH_DG = np.loadtxt(
-        "catalogos/objects_in_ref.dat", usecols=(0, 1, 4, 8, 10, 11), unpack=True
+        obj_ref_filepath, usecols=(0, 1, 4, 8, 10, 11), unpack=True
     )
-    # TODO: Variavel instanciada e não utilizada
-    name_obj = np.loadtxt(
-        "catalogos/objects_in_ref.dat", dtype=str, usecols=(2), unpack=True
-    )
+
+    # # TODO: Variavel instanciada e não utilizada
+    # name_obj = np.loadtxt(
+    #     "catalogos/objects_in_ref.dat", dtype=str, usecols=(2), unpack=True
+    # )
+
+    #  Catalogo Harris_updated.dat
+    harris_updated_filepath = Path(catalogs_path, "Harris_updated.dat")
     # 0-Name 1-L 2-B 3-R_gc	4-Fe/H 5-M-M 6-Mv 7-rhl arcmin
     R_MW_GC, FeH_GC, mM_GC, Mv_GC, rhl_arcmin_GC = np.loadtxt(
-        "catalogos/Harris_updated.dat", usecols=(3, 4, 5, 6, 7), unpack=True
+        harris_updated_filepath, usecols=(3, 4, 5, 6, 7), unpack=True
     )
     dist_kpc_GC = 10 ** (mM_GC / 5 - 2)
-    # TODO: Variavel instanciada e não utilizada
+
+    # Star Clusters Simulated
+    # TODO: Variaveis instanciadas e não utilizadas
+    star_clusters_simulated = Path(star_clusters_simulated)
     PIX_sim, NSTARS, MAG_ABS_V, RA, DEC, R_EXP, ELL, PA, MASS, DIST = np.loadtxt(
-        "star_clusters_simulated.dat",
+        star_clusters_simulated,
         usecols=(0, 1, 2, 6, 7, 8, 9, 10, 11, 12),
         unpack=True,
     )
@@ -325,6 +341,7 @@ def plots_ref(FeH_iso):
     axs[1, 1].set_xlabel("[Fe/H]")
     axs[1, 1].legend(loc=1)
 
+    #  PLOT 1 ----------------
     plt.suptitle(
         "Physical features of 58 Dwarf Gal + 152 GC + "
         + str(len(PIX_sim))
@@ -333,13 +350,36 @@ def plots_ref(FeH_iso):
     )
     fig.tight_layout()
     plt.subplots_adjust(top=0.92)
-    plt.savefig("_01_real_objects.png")
+
+    filepath = Path(output_plots, "_01_real_objects.png")
+    plt.savefig(filepath)
+    plt.close()
+
+    #  PLOT 2 ----------------
+    plt.scatter(
+        DIST / 1000,
+        np.repeat(FeH_iso, len(DIST)),
+        label="Sim",
+        color="grey",
+        marker="x",
+        lw=1.0,
+    )
+    plt.scatter(MW_center_distance_DG_kpc, FeH_DG, label="DG", color="r")
+    plt.scatter(R_MW_GC, FeH_GC, label="GC", color="b")
+    plt.xlabel("Distance to the Galactic center (kpc)")
+    plt.ylabel("[Fe/H]")
+    plt.ylim([-3.5, 0])
+    plt.legend()
+    plt.grid()
+    filepath = Path(output_plots, "_02_feh_rgc.png")
+    plt.savefig(filepath)
     plt.close()
 
     # TODO: Variavel instanciada e não utilizada
     rhl = np.logspace(np.log10(1.8), np.log10(1800), 10, endpoint=True)
     m_v = np.linspace(1, -14, 10, endpoint=True)
 
+    #  PLOT 3 ----------------
     plt.scatter(1.7 * R_EXP, MAG_ABS_V, marker="s", color="grey", label="Sim")
     plt.scatter(rhl_pc_obj, Mv_obj, marker="^", color="r", label="DG")
     plt.scatter(rhl_pc_GC, Mv_GC, marker="x", color="b", label="GC")
@@ -375,36 +415,28 @@ def plots_ref(FeH_iso):
     plt.ylabel(r"$M_V$")
     plt.xlabel(r"$r_h\ (pc)$")
     plt.legend(loc=2, frameon=True)
-    plt.savefig("_03_mv_rh.png")
+
+    filepath = Path(output_plots, "_03_mv_rh.png")
+    plt.savefig(filepath)
     plt.close()
 
-    plt.scatter(
-        DIST / 1000,
-        np.repeat(FeH_iso, len(DIST)),
-        label="Sim",
-        color="grey",
-        marker="x",
-        lw=1.0,
-    )
-    plt.scatter(MW_center_distance_DG_kpc, FeH_DG, label="DG", color="r")
-    plt.scatter(R_MW_GC, FeH_GC, label="GC", color="b")
-    plt.xlabel("Distance to the Galactic center (kpc)")
-    plt.ylabel("[Fe/H]")
-    plt.ylim([-3.5, 0])
-    plt.legend()
-    plt.grid()
-    plt.savefig("_02_feh_rgc.png")
-    plt.close()
+    plt.show()
 
 
-def plot_err():
+def plot_err(
+    mockcat=Path("results/des_mockcat_for_detection.fits"), output_plots=Path("results")
+):
+
     """Plot the magnitude and error of the simulated clusters compared to the
     real stars, in log scale.
 
     """
     # TODO: Path de arquivo hardcoded, verificar se pode ser parametro ou um path fixo
-    hdu = fits.open("des_mockcat_for_detection.fits", memmap=True)
+    mockcat = Path(mockcat)
+
+    hdu = fits.open(mockcat, memmap=True)
     GC = hdu[1].data.field("GC")
+
     # TODO: Variaveis instanciadas mas não utilizadas
     ra = hdu[1].data.field("ra")
     dec = hdu[1].data.field("dec")
@@ -426,4 +458,8 @@ def plot_err():
     plt.xlabel("mag_g_with_err")
     plt.ylabel("magerr_g")
     plt.legend()
+
+    filepath = Path(output_plots, "simulated_stars_err.png")
+    plt.savefig(filepath)
+
     plt.show()
