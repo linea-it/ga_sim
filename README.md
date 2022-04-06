@@ -83,21 +83,26 @@ of steps.
 
 ### Installation
 
-1. Access the jn notebook environment on LIneA at [https://jupyter.linea.gov.br/](https://jupyter.linea.gov.br/),
-   entering with your credentials. Select the last version of science image.
-2. Clone the repo
-   ```sh
-   git clone https://github.com/linea-it/gawa_simulations.git
-   ```
-3. Install the packages indicated above (in the case it is not available on the last version of science image),
-   using a terminal:
-   ```sh
-   python -m pip install -U --user pip
-   python -m pip install -U --user scikit-image
-   pip install --user parsl
-   ```
-4. Restart the jn kernel to load the libraries installed.
-5. Run the jn cell by cell.
+Clone the repository and create an environment with Conda:
+```bash
+git clone https://github.com/linea-it/ga_sim && cd ga_sim
+conda create -p $HOME/.conda/envs/ga_sim python=3.8
+conda activate ga_sim
+conda install jupyterlab
+conda install ipykernel
+pip install numpy
+pip install astropy
+pip install healpy
+ipython kernel install --user --name=ga_sim
+```
+
+### Running
+
+```bash
+jupyter-lab gawazpy.ipynb
+```
+Restart the jn kernel to load the libraries installed.
+Run the jn cell by cell.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -109,7 +114,6 @@ In the first cells the code lists many inputs in order to set an initial configu
 See the comments after the values in the code.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
-
 
 
 <!-- ROADMAP -->
