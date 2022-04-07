@@ -5,6 +5,8 @@ import astropy.io.fits as fits
 import healpy as hp
 import matplotlib.path as mpath
 import numpy as np
+import sqlalchemy
+from astropy.table import Table
 from astropy import units as u
 from astropy.coordinates import SkyCoord, match_coordinates_sky
 from astropy.io.fits import getdata
@@ -13,7 +15,7 @@ from pathlib import Path
 from itertools import compress
 
 
-def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax, outfile, AG_AV, AR_AV, ngp, sgp):
+def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax, outfile, AG_AV, AR_AV, ngp, sgp, results_path):
     engine = sqlalchemy.create_engine(
         'postgresql://untrustedprod:untrusted@desdb4.linea.gov.br:5432/prod_gavo')
     conn = engine.connect()
