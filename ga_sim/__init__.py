@@ -18,7 +18,8 @@ from ga_sim.ga_sim import (
     download_iso,
     read_cat,
     gen_clus_file,
-    read_error
+    read_error,
+    clus_file_results
 )
 from ga_sim.plot import (
     unnamed_plot,

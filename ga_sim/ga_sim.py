@@ -15,26 +15,31 @@ from pathlib import Path
 from itertools import compress
 
 
+def clus_file_results(results_path, out_file, sim_clus_feat, objects_filepath, star_clusters_simulated)))
+    star_clusters_simulated=Path(results_path, out_file)
+    os.system('join --nocheck-order %s %s > %s' %
+              (sim_clus_feat, objects_filepath, star_clusters_simulated))
+
+
 def read_error(infile, to_add_mag1, to_add_mag2):
-    mag1_, err1_, err2_ = np.loadtxt(infile, usecols=(0, 1, 2), unpack=True)
+    mag1_, err1_, err2_=np.loadtxt(infile, usecols=(0, 1, 2), unpack=True)
     err1_ += to_add_mag1
     err2_ += to_add_mag2
     return mag1_, err1_, err2_
 
 
-
 def gen_clus_file(ra_min, ra_max, dec_min, dec_max, nside_ini, border_extract,
                   mM_min, mM_max, log10_rexp_min, log10_rexp_max, log10_mass_min,
                   log10_mass_max, ell_min, ell_max, pa_min, pa_max, results_path):
-    cell_area = hp.nside2pixarea(nside_ini, degrees=True)
+    cell_area=hp.nside2pixarea(nside_ini, degrees=True)
 
-    area = (
+    area=(
         (dec_max - dec_min)
         * np.cos(np.deg2rad((ra_max + ra_min) / 2.0))
         * (ra_max - ra_min)
     )
 
-    vertices = hp.ang2vec(
+    vertices=hp.ang2vec(
         [
             ra_min + border_extract,
             ra_max - border_extract,
