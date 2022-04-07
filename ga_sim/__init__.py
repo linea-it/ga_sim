@@ -16,7 +16,9 @@ from ga_sim.ga_sim import (
     radec2GCdist,
     remove_close_stars,
     download_iso,
-    read_cat
+    read_cat,
+    gen_clus_file,
+    read_error
 )
 from ga_sim.plot import (
     unnamed_plot,

@@ -15,6 +15,72 @@ from pathlib import Path
 from itertools import compress
 
 
+def read_error(infile, to_add_mag1, to_add_mag2):
+    mag1_, err1_, err2_ = np.loadtxt(infile, usecols=(0, 1, 2), unpack=True)
+    err1_ += to_add_mag1
+    err2_ += to_add_mag2
+    return mag1_, err1_, err2_
+
+
+
+def gen_clus_file(ra_min, ra_max, dec_min, dec_max, nside_ini, border_extract,
+                  mM_min, mM_max, log10_rexp_min, log10_rexp_max, log10_mass_min,
+                  log10_mass_max, ell_min, ell_max, pa_min, pa_max, results_path):
+    cell_area = hp.nside2pixarea(nside_ini, degrees=True)
+
+    area = (
+        (dec_max - dec_min)
+        * np.cos(np.deg2rad((ra_max + ra_min) / 2.0))
+        * (ra_max - ra_min)
+    )
+
+    vertices = hp.ang2vec(
+        [
+            ra_min + border_extract,
+            ra_max - border_extract,
+            ra_max - border_extract,
+            ra_min + border_extract,
+        ],
+        [
+            dec_min + border_extract,
+            dec_min + border_extract,
+            dec_max - border_extract,
+            dec_max - border_extract,
+        ],
+        lonlat=True,
+    )
+
+    hp_sample_un = hp.query_polygon(
+        nside_ini, vertices, inclusive=False, nest=True, buff=None)
+
+    RA_pix, DEC_pix = hp.pix2ang(
+        nside_ini, hp_sample_un, nest=True, lonlat=True)
+
+    c = SkyCoord(ra=RA_pix * u.degree, dec=DEC_pix * u.degree, frame='icrs')
+    L = c.galactic.l.degree
+    B = c.galactic.b.degree
+
+    objects_filepath = Path(results_path, "objects.dat")
+    with open(objects_filepath, 'w') as obj_file:
+
+        # Creating random distances, masses, ellipticities and positional
+        # angles based on limits required, and printing to file objects.dat.
+        mM = mM_min + np.random.rand(len(hp_sample_un)) * (mM_max - mM_min)
+        r_exp = 10**(log10_rexp_min * (log10_rexp_max / log10_rexp_min)
+                     ** np.random.rand(len(hp_sample_un)))
+        mass = 10**(log10_mass_min * (log10_mass_max / log10_mass_min)
+                    ** np.random.rand(len(hp_sample_un)))
+        dist = 10 ** ((mM/5) + 1)
+
+        ell = ell_min + np.random.rand(len(hp_sample_un)) * (ell_max - ell_min)
+        pa = pa_min + np.random.rand(len(hp_sample_un)) * (pa_max - pa_min)
+
+        for i in range(len(hp_sample_un)):
+            print('{:d} {:.4f} {:.4f} {:.4f} {:.4f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f}'.format(
+                hp_sample_un[i], L[i], B[i], RA_pix[i], DEC_pix[i], r_exp[i], ell[i], pa[i],
+                mass[i], dist[i]), file=obj_file)
+
+
 def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax, outfile, AG_AV, AR_AV, ngp, sgp, results_path):
     engine = sqlalchemy.create_engine(
         'postgresql://untrustedprod:untrusted@desdb4.linea.gov.br:5432/prod_gavo')
