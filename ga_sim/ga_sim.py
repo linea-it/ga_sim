@@ -15,8 +15,8 @@ from pathlib import Path
 from itertools import compress
 
 
-def clus_file_results(results_path, out_file, sim_clus_feat, objects_filepath, star_clusters_simulated)))
-    star_clusters_simulated=Path(results_path, out_file)
+def clus_file_results(results_path, out_file, sim_clus_feat, objects_filepath):
+    star_clusters_simulated = Path(results_path, out_file)
     os.system('join --nocheck-order %s %s > %s' %
               (sim_clus_feat, objects_filepath, star_clusters_simulated))
 
@@ -84,7 +84,7 @@ def gen_clus_file(ra_min, ra_max, dec_min, dec_max, nside_ini, border_extract,
             print('{:d} {:.4f} {:.4f} {:.4f} {:.4f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f}'.format(
                 hp_sample_un[i], L[i], B[i], RA_pix[i], DEC_pix[i], r_exp[i], ell[i], pa[i],
                 mass[i], dist[i]), file=obj_file)
-    return RA_pix, DEC_pix, r_exp, ell, pa, dist, mass, hp_sample_un
+    return RA_pix, DEC_pix, r_exp, ell, pa, dist, mass, mM, hp_sample_un
 
 
 def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax, outfile, AG_AV, AR_AV, ngp, sgp, results_path):
