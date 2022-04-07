@@ -13,6 +13,63 @@ from pathlib import Path
 from itertools import compress
 
 
+def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax, outfile, AG_AV, AR_AV, ngp, sgp):
+    engine = sqlalchemy.create_engine(
+        'postgresql://untrustedprod:untrusted@desdb4.linea.gov.br:5432/prod_gavo')
+    conn = engine.connect()
+
+    query = 'select ra, dec, mag_g, magerr_g, mag_r, magerr_r from %s where (ra > %s) and (ra <%s) and (dec > %s) and (dec < %s)' % (
+        tablename, ra_min, ra_max, dec_min, dec_max)
+    stm = sqlalchemy.sql.text(query)
+    stm_get = conn.execute(stm)
+    stm_result = stm_get.fetchall()
+    table = Table(rows=stm_result, names=(
+        'ra', 'dec', 'mag_g', 'magerr_g', 'mag_r', 'magerr_r'))
+
+    RA = np.array(table['ra'])
+    DEC = np.array(table['dec'])
+    MAG_G = np.array(table['mag_g'])
+    MAGERR_G = np.array(table['magerr_g'])
+    MAG_R = np.array(table['mag_r'])
+    MAGERR_R = np.array(table['magerr_r'])
+
+    c = SkyCoord(
+        ra=RA * u.degree,
+        dec=DEC * u.degree,
+        frame='icrs'
+    )
+    L = c.galactic.l.degree
+    B = c.galactic.b.degree
+
+    MAG_G -= AG_AV * get_av(L, B, ngp, sgp)
+    MAG_R -= AR_AV * get_av(L, B, ngp, sgp)
+
+    cond = (MAG_G < mmax) & (MAG_G > mmin) & (
+        MAG_G-MAG_R > cmin) & (MAG_G-MAG_R < cmax)
+
+    RA = RA[cond]
+    DEC = DEC[cond]
+    MAG_G = MAG_G[cond]
+    MAG_R = MAG_R[cond]
+    MAGERR_G = MAGERR_G[cond]
+    MAGERR_R = MAGERR_R[cond]
+
+    col1 = fits.Column(name='RA', format='D', array=RA)
+    col2 = fits.Column(name='DEC', format='D', array=DEC)
+    col3 = fits.Column(name='MAG_G', format='E', array=MAG_G)
+    col4 = fits.Column(name='MAG_R', format='E', array=MAG_R)
+    col5 = fits.Column(name='MAGERR_G', format='E', array=MAGERR_G)
+    col6 = fits.Column(name='MAGERR_R', format='E', array=MAGERR_R)
+
+    cols = fits.ColDefs([col1, col2, col3, col4, col5, col6])
+    tbhdu = fits.BinTableHDU.from_columns(cols)
+
+    des_cat_filepath = Path(results_path, outfile)
+    tbhdu.writeto(des_cat_filepath, overwrite=True)
+
+    return RA, DEC, MAG_G, MAGERR_G, MAG_R, MAGERR_R
+
+
 def dist_ang(ra1, dec1, ra_ref, dec_ref):
     """Calculated the angular distance between (ra1, dec1) and (ra_ref, dec_ref)
     ra-dec in degrees
@@ -66,10 +123,12 @@ def download_iso(version, phot_system, Z, age, av_ext, out_file):
         "imf_kroupa_orig.dat&output_kind=0&output_evstage=1&output_gzip=0"
     webserver = "http://stev.oapd.inaf.it"
     try:
-        os.system(("wget -o lixo -Otmp --post-data='submit_form=Submit&cmd_version={}&photsys_file=tab_mag_odfnew/tab_mag_{}.dat&photsys_version=YBC&output_kind=0&output_evstage=1&isoc_isagelog=0&isoc_agelow={:.2e}&isoc_ageupp={:.2e}&isod_dage=0&isoc_ismetlog=0&isoc_zlow={:.3f}&isoc_zupp={:.3f}&isod_dz=0&extinction_av={:.3f}&{}' {}/cgi-bin/cmd_{}".format(version, phot_system, age, age, Z, Z, av_ext, main_pars, webserver, version)).replace('e+', 'e'))
+        os.system(("wget -o lixo -Otmp --post-data='submit_form=Submit&cmd_version={}&photsys_file=tab_mag_odfnew/tab_mag_{}.dat&photsys_version=YBC&output_kind=0&output_evstage=1&isoc_isagelog=0&isoc_agelow={:.2e}&isoc_ageupp={:.2e}&isod_dage=0&isoc_ismetlog=0&isoc_zlow={:.3f}&isoc_zupp={:.3f}&isod_dz=0&extinction_av={:.3f}&{}' {}/cgi-bin/cmd_{}".format(
+            version, phot_system, age, age, Z, Z, av_ext, main_pars, webserver, version)).replace('e+', 'e'))
     except:
         print("No communication with {}".format(webserver))
-    if phot_system == 'des': phot_system = 'decam'
+    if phot_system == 'des':
+        phot_system = 'decam'
     with open('tmp') as f:
         aaa = f.readlines()
         for i, j in enumerate(aaa):
@@ -990,7 +1049,7 @@ def radec2GCdist(ra, dec, dist_kpc):
 
 
 def remove_close_stars(input_cat, output_cat, nside_ini, PSF_factor, PSF_size):
-    # TODO: this function is really slow. Improve that function to remove 
+    # TODO: this function is really slow. Improve that function to remove
     # star closer than an specific distance in parallel.
     """This function removes the stars closer than PSF_factor * PSF_size
     This is an observational bias of the DES since the photometric pipeline

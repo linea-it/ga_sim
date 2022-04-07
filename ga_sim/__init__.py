@@ -15,7 +15,8 @@ from ga_sim.ga_sim import (
     SplitFtpHPX,
     radec2GCdist,
     remove_close_stars,
-    download_iso
+    download_iso,
+    read_cat
 )
 from ga_sim.plot import (
     unnamed_plot,
