@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import os
-
 import astropy.coordinates as coord
 import astropy.io.fits as fits
 import healpy as hp
@@ -41,6 +40,47 @@ def dist_ang(ra1, dec1, ra_ref, dec_ref):
     return np.rad2deg(dist_ang)  # degrees
 
 
+def download_iso(version, phot_system, Z, age, av_ext, out_file):
+    """Submit a request of an isochrone from PADOVA schema, download the file
+    requested and uses as an input file to the stellar population of clusters.
+
+    Parameters
+    ----------
+    version : str
+        Version of PADOVA/PARSEC isochrones ('3.4', '3.5' or '3.6')
+    phot_system : str
+        Photometric system of isochrones. For DES uses 'decam'.
+    Z : float
+        Amount of metals in mass. Z_sun = 0.019.
+    age : float
+        Age of isochrone in years (not log age).
+    av_ext : float
+        Extinction in V band. Usually 0.000.
+    out_file : str
+        Name of the output file, which is written as 
+        output.
+    """
+    main_pars = "track_parsec=parsec_CAF09_v1.2S&track_colibri=parsec_CAF09_v1.2S_S_LMC_08_web&track_postagb=" + "no&n_inTPC=10&eta_reimers=0.2&kind_interp=1&kind_postagb=-1&kind_tpagb=-1&kind_pulsecycle=" + \
+        "0&kind_postagb=-1&kind_mag=2&kind_dust=0&extinction_coeff=constant&extinction_curve=" + \
+        "cardelli&kind_LPV=1&dust_sourceM=dpmod60alox40&dust_sourceC=AMCSIC15&imf_file=tab_imf/" + \
+        "imf_kroupa_orig.dat&output_kind=0&output_evstage=1&output_gzip=0"
+    webserver = "http://stev.oapd.inaf.it"
+    try:
+        os.system(("wget -o lixo -Otmp --post-data='submit_form=Submit&cmd_version={}&photsys_file=tab_mag_odfnew/tab_mag_{}.dat&photsys_version=YBC&output_kind=0&output_evstage=1&isoc_isagelog=0&isoc_agelow={:.2e}&isoc_ageupp={:.2e}&isod_dage=0&isoc_ismetlog=0&isoc_zlow={:.3f}&isoc_zupp={:.3f}&isod_dz=0&extinction_av={:.3f}&{}' {}/cgi-bin/cmd_{}".format(version, phot_system, age, age, Z, Z, av_ext, main_pars, webserver, version)).replace('e+', 'e'))
+    except:
+        print("No communication with {}".format(webserver))
+    if phot_system == 'des': phot_system = 'decam'
+    with open('tmp') as f:
+        aaa = f.readlines()
+        for i, j in enumerate(aaa):
+            if '/output' in j:
+                out_file_tmp = 'output' + \
+                    j.split("/output", )[1][0:12] + '.dat'
+    os.system("wget -o lixo -O{} {}/tmp/{}".format(out_file_tmp,
+              webserver, out_file_tmp))
+    os.system("mv {} {}".format(out_file_tmp, out_file))
+
+
 def get_av(gal_l, gal_b, ngp, sgp):
     """Return extinction (A) in V band based on l, b position. Rv is defined as
     a constant and equal to 3.1.
@@ -55,8 +95,10 @@ def get_av(gal_l, gal_b, ngp, sgp):
         Galactic longitude of the objects (degrees)
     gal_b : list
         Galactic latitude of the objects (degrees)
-    ngp : TODO: Documentar este parametro
-    sgp : TODO: Documentar este parametro
+    ngp : array or map
+        Northern Galactic reddening map.
+    sgp : array or map
+        Southern Galactic reddening map.
     Returns
     -------
     av : list
@@ -145,8 +187,10 @@ def d_star_real_cat(hpx_ftp, length, nside3, nside_ftp):
         The set of ipixels in the footprint
     length : int
         Total amount of stars in the real catalog
-    nside3: TODO: Documentar este parametro
-    nside_ftp: TODO: Documentar este parametro
+    nside3: int
+        Nside HealPix to granullarity of the stellar positions.
+    nside_ftp: int
+        Nside of the footprint map.
 
     Returns
     -------
@@ -159,7 +203,8 @@ def d_star_real_cat(hpx_ftp, length, nside3, nside_ftp):
     set_pixels_nside3 = A * (f2**2) + a
     hpx_star = np.random.choice(set_pixels_nside3, length, replace=False)
     np.random.shuffle(hpx_star)
-    ra_mw_stars, dec_mw_stars = hp.pix2ang(nside3, hpx_star, nest=True, lonlat=True)
+    ra_mw_stars, dec_mw_stars = hp.pix2ang(
+        nside3, hpx_star, nest=True, lonlat=True)
     return ra_mw_stars, dec_mw_stars
 
 
@@ -316,7 +361,6 @@ def unc(mag, mag_table, err_table):
 
 # @python_app
 # TODO para essa função virar um Parsl App precisa importar todas as dependencias
-# from scipy.stats import expon
 def faker(
     N_stars_cmd,
     frac_bin,
@@ -381,14 +425,22 @@ def faker(
         Distance to the cluster in parsecs
     hpx : int
         Pixel where the cluster resides (nested)
-    cmin : TODO: Documentar este parametro
-    cmax : TODO: Documentar este parametro
-    mmin : TODO: Documentar este parametro
-    mmax : TODO: Documentar este parametro
-    mag1_ : TODO: Documentar este parametro
-    err1_ : TODO: Documentar este parametro
-    err2_ : TODO: Documentar este parametro
-    file_iso : TODO: Documentar este parametro
+    cmin : float
+        Minimum color.
+    cmax : float
+        Maximum color.
+    mmin : float
+        Minimum magnitude.
+    mmax : float
+        Maximum magnitude.
+    mag1_ : list
+        List of magnitudes acoording error.
+    err1_ : list
+        List of errors in bluer magnitude.
+    err2_ : list
+        List of errors in redder magnitude.
+    file_iso : str
+        Name of file with data from isochrone.
     """
 
     # Cria o diretório de output se não existir
@@ -564,7 +616,42 @@ def join_cat(
     Only global parameters are needed (see its description above)
     and the code is intended to write a single fits file.
 
-    TODO: Documentar os parametros
+    Parameters
+    ----------
+    ra_min : float
+        Minimum right ascention in degrees
+    ra_max : float
+        Maximum right ascention in degrees
+    dec_min : float
+        Minimum declination in degrees.
+    dec_max : float
+        Maximum declination in degrees.
+    hp_sample_un : list
+        List of footprint healpix
+    survey : str
+        THe name of survey.
+    RA : array-like
+        Right ascention of the stars, in degrees.
+    DEC : array-like
+        Declination of stars in degrees.
+    MAG_G : array-like
+        Bluer magnitude of stars.
+    MAG_R : array-like
+        Redder magnitude of stars.
+    MAGERR_G : array-like
+        Error of stellar measurements for the first band.
+    MAGERR_R : array-like
+        Error of stellar measurements for the second band.
+    nside_ini : float
+        Nside of hp_sample_un.
+    mmax : float
+        Maximum magnitude of stars.
+    mmin : float
+        Minimum magnitude of stars.
+    cmin : float
+        Minimum color of stars.
+    cmax : float
+        Maximum color of stars.
     """
 
     GC = np.zeros(len(RA), dtype=int)
@@ -688,6 +775,10 @@ def snr_estimate(
 
     # TODO: Verificar esses arquivos hardcoded. se deveriam ser parametros
     # OU estar em um path fixo dentro da lib
+    # Estes arquivos informam o erro em magnitude. Variam de survey oara survey
+    # e de release a release. Talvez fazer pastas com o nome do survey e colocar
+    # eles apenas como mag1_err e mag2_err fosse melhor. ou informar no set de
+    # parametros.
     _g, _gerr = np.loadtxt("des_y6_g_gerr.asc", usecols=(0, 1), unpack=True)
     _r, _rerr = np.loadtxt("des_y6_r_rerr.asc", usecols=(0, 1), unpack=True)
 
@@ -750,8 +841,6 @@ def write_sim_clus_features(
     DEC = hdu[1].data.field("dec")
     MAG_G = hdu[1].data.field("mag_g_with_err")
     MAG_R = hdu[1].data.field("mag_r_with_err")
-    MAGERR_G = hdu[1].data.field("magerr_g")
-    MAGERR_R = hdu[1].data.field("magerr_r")
     HPX64 = hdu[1].data.field("HPX64")
 
     filepath = Path(output_path, "n_stars.dat")
@@ -778,9 +867,7 @@ def write_sim_clus_features(
 
             cond_clus = (cond) & (GC == 1)
             # TODO: Variaveis declaradas e não usadas.
-            RA_clus, DEC_clus, MAGG_clus, MAGR_clus = (
-                RA[cond_clus],
-                DEC[cond_clus],
+            MAGG_clus, MAGR_clus = (
                 MAG_G[cond_clus],
                 MAG_R[cond_clus],
             )
@@ -798,8 +885,6 @@ def write_sim_clus_features(
                 ),
                 file=out_file,
             )
-            # except:
-            #    print(hp_sample_un[j], 0.000, 99.999, 0.000, file=ccc)
     return filepath
 
 
@@ -868,7 +953,8 @@ def SplitFtpHPX(
 
         cond = HPX64 == i
 
-        col0 = fits.Column(name="HP_PIXEL_NEST_4096", format="K", array=HPX4096[cond])
+        col0 = fits.Column(name="HP_PIXEL_NEST_4096",
+                           format="K", array=HPX4096[cond])
         col1 = fits.Column(name="SIGNAL", format="E", array=SIGNAL[cond])
         cols = fits.ColDefs([col0, col1])
         tbhdu = fits.BinTableHDU.from_columns(cols)
@@ -903,7 +989,9 @@ def radec2GCdist(ra, dec, dist_kpc):
     return np.sqrt(x * x + y * y + z * z)
 
 
-def remove_close_stars(input_cat, output_cat, nside_ini):
+def remove_close_stars(input_cat, output_cat, nside_ini, PSF_factor, PSF_size):
+    # TODO: this function is really slow. Improve that function to remove 
+    # star closer than an specific distance in parallel.
     """This function removes the stars closer than PSF_factor * PSF_size
     This is an observational bias of the DES since the photometric pipeline
     is set to join regions closer than an specific distance.
@@ -927,10 +1015,7 @@ def remove_close_stars(input_cat, output_cat, nside_ini):
     """
     input_cat = Path(input_cat)
     output_cat = Path(output_cat)
-    # TODO: Parametro PSF_factor não está sendo usado conferir se é necessário.
 
-    # TODO: Variaveis instanciadas mas não utilizadas
-    PSF_size = 0.8  # arcsec
     hdu = fits.open(input_cat, memmap=True)
     GC = hdu[1].data.field("GC")
     ra = hdu[1].data.field("ra")
@@ -943,7 +1028,7 @@ def remove_close_stars(input_cat, output_cat, nside_ini):
     hdu.close()
 
     idx = []
-    seplim = (1.0 / 3600) * u.degree
+    seplim = (PSF_factor * PSF_size / 3600) * u.degree
     for i in range(len(ra)):
         cond = (
             (ra > ra[i] - 0.05)
@@ -964,11 +1049,13 @@ def remove_close_stars(input_cat, output_cat, nside_ini):
         # if dist > (PSF_factor * PSF_size/3600.):
         #    idx.append(i)
 
-    print(len(ra), len(idx))
     HPX64 = hp.ang2pix(nside_ini, ra, dec, nest=True, lonlat=True)
-    col0 = fits.Column(name="GC", format="I", array=np.asarray([GC[i] for i in idx]))
-    col1 = fits.Column(name="ra", format="D", array=np.asarray([ra[i] for i in idx]))
-    col2 = fits.Column(name="dec", format="D", array=np.asarray([dec[i] for i in idx]))
+    col0 = fits.Column(name="GC", format="I",
+                       array=np.asarray([GC[i] for i in idx]))
+    col1 = fits.Column(name="ra", format="D",
+                       array=np.asarray([ra[i] for i in idx]))
+    col2 = fits.Column(name="dec", format="D",
+                       array=np.asarray([dec[i] for i in idx]))
     col3 = fits.Column(
         name="mag_g_with_err",
         format="E",
