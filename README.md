@@ -88,6 +88,8 @@ Clone the repository and create an environment with Conda:
 git clone https://github.com/linea-it/ga_sim && cd ga_sim
 conda create -p $HOME/.conda/envs/ga_sim python=3.8
 conda activate ga_sim
+conda install -c anaconda sqlalchemy
+conda install -c anaconda psycopg2
 conda install jupyterlab
 conda install ipykernel
 pip install numpy
