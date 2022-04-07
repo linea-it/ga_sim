@@ -79,6 +79,7 @@ def gen_clus_file(ra_min, ra_max, dec_min, dec_max, nside_ini, border_extract,
             print('{:d} {:.4f} {:.4f} {:.4f} {:.4f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f}'.format(
                 hp_sample_un[i], L[i], B[i], RA_pix[i], DEC_pix[i], r_exp[i], ell[i], pa[i],
                 mass[i], dist[i]), file=obj_file)
+    return RA_pix, DEC_pix, r_exp, ell, pa, dist, mass, hp_sample_un
 
 
 def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax, outfile, AG_AV, AR_AV, ngp, sgp, results_path):
@@ -190,13 +191,13 @@ def download_iso(version, phot_system, Z, age, av_ext, out_file):
         "cardelli&kind_LPV=1&dust_sourceM=dpmod60alox40&dust_sourceC=AMCSIC15&imf_file=tab_imf/" + \
         "imf_kroupa_orig.dat&output_kind=0&output_evstage=1&output_gzip=0"
     webserver = "http://stev.oapd.inaf.it"
+    if phot_system == 'des':
+        phot_system = 'decam'
     try:
         os.system(("wget -o lixo -Otmp --post-data='submit_form=Submit&cmd_version={}&photsys_file=tab_mag_odfnew/tab_mag_{}.dat&photsys_version=YBC&output_kind=0&output_evstage=1&isoc_isagelog=0&isoc_agelow={:.2e}&isoc_ageupp={:.2e}&isod_dage=0&isoc_ismetlog=0&isoc_zlow={:.3f}&isoc_zupp={:.3f}&isod_dz=0&extinction_av={:.3f}&{}' {}/cgi-bin/cmd_{}".format(
             version, phot_system, age, age, Z, Z, av_ext, main_pars, webserver, version)).replace('e+', 'e'))
     except:
         print("No communication with {}".format(webserver))
-    if phot_system == 'des':
-        phot_system = 'decam'
     with open('tmp') as f:
         aaa = f.readlines()
         for i, j in enumerate(aaa):
@@ -574,7 +575,7 @@ def faker(
     output_path = Path(output_path)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    mass, mag1, mag2 = np.loadtxt(file_iso, usecols=(3, 29, 30), unpack=True)
+    mass, mag1, mag2 = np.loadtxt(file_iso, usecols=(3, 26, 27), unpack=True)
 
     # bin in mass (solar masses)
     binmass = 5.0e-4

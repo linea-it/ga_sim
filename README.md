@@ -90,11 +90,13 @@ conda create -p $HOME/.conda/envs/ga_sim python=3.8
 conda activate ga_sim
 conda install -c anaconda sqlalchemy
 conda install -c anaconda psycopg2
+conda install -c conda-forge tqdm
 conda install jupyterlab
 conda install ipykernel
 pip install numpy
 pip install astropy
 pip install healpy
+pip install --user parsl
 ipython kernel install --user --name=ga_sim
 ```
 
