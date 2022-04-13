@@ -15,6 +15,211 @@ from pathlib import Path
 from itertools import compress
 
 
+def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, half_size_plot=0.01):
+    """_summary_
+
+    Parameters
+    ----------
+    ipix_cats : list
+        List of catalogs with all stars.
+    ipix_clean_cats : list
+        List of catalogs with stars filtered.
+    nside : int
+        Nside of pixelizations.
+    half_size_plot : float, optional
+        Size to be seen on plots. Usually twice the angular size of exponential
+        profiles of clusters. Units: degrees.
+    """
+    len_ipix = len(ipix_clean_cats)
+
+    ipix = [int((i.split('/')[-1]).split('.')[0]) for i in ipix_cats]
+
+    ra_cen, dec_cen = hp.pix2ang(nside, ipix, nest=True, lonlat=True)
+    half_size_plot = 0.01
+    fig, ax = plt.subplots(len_ipix, 4, figsize=(18, 4 * len_ipix))
+    j = 0
+    for i in range(len_ipix):
+        line = int(j / 4)
+        col = int(j % 4)
+        data = fits.getdata(ipix_cats[i])
+        RA_orig = data[ra_str]
+        DEC_orig = data[dec_str]
+        if len(RA_orig[(RA_orig < ra_cen[i] + half_size_plot) & (RA_orig > ra_cen[i] - half_size_plot) &
+                       (DEC_orig < dec_cen[i] + half_size_plot) & (DEC_orig > dec_cen[i] - half_size_plot)]) > 10.:
+            data = fits.getdata(ipix_clean_cats[i])
+            RA = data[ra_str]
+            DEC = data[dec_str]
+            ax[line, col].scatter(
+                RA_orig, DEC_orig, edgecolor='b', color='None', s=20)
+            ax[line, col].set_xlim(
+                [ra_cen[i] + half_size_plot, ra_cen[i] - half_size_plot])
+            ax[line, col].set_ylim(
+                [dec_cen[i] - half_size_plot, dec_cen[i] + half_size_plot])
+            ax[line, col].scatter(RA, DEC, color='r', s=2)
+            ax[line, col].set_xlim(
+                [ra_cen[i] + half_size_plot, ra_cen[i] - half_size_plot])
+            ax[line, col].set_ylim(
+                [dec_cen[i] - half_size_plot, dec_cen[i] + half_size_plot])
+            ax[line, col].set_xticks([])
+            ax[line, col].set_yticks([])
+            ax[line, col].set_title(str(ipix[i]), x=0.5, y=0.6, fontsize=8)
+            j += 1
+    plt.suptitle('Blue: original, Red: filtered stars; Each poststamp has {:.2f} arcmin'.format(
+        2. * 60. * half_size_plot))
+    plt.subplots_adjust(wspace=0, hspace=0)
+    plt.show()
+    
+    
+def join_cats_clean(ipix_cats, output_file, ra_str, dec_str):
+    """This function writes a single Fits file catalog gathering
+    data read in all the ipix_cats.
+    
+    Parameters
+    ----------
+    ipix_cats : list
+        List of ipix FITS files catalogs.
+    output_file : str
+        File name with all data from ipix cats.
+    ra_str : str
+        Label of RA coordinate.
+    dec_str : str
+        Label of DEC coordinate.
+    """
+    t = Table.read(ipix_cats[0])
+    label_columns = t.colnames
+    t_format = []
+    for i in label_columns:
+        t_format.append(t[i].info.dtype)
+
+    for i, j in enumerate(ipix_cats):
+        if i == 0:
+            data = getdata(j)
+            all_data = data
+        else:
+            data = getdata(j)
+            all_data = np.concatenate((all_data, data))
+
+    col = [i for i in range(len(label_columns))]
+
+    for i, j in enumerate(label_columns):
+        col[i] = fits.Column(
+            name=j, format=t_format[i], array=all_data[label_columns[i]])
+    cols = fits.ColDefs([col[i] for i in range(len(label_columns))])
+    tbhdu = fits.BinTableHDU.from_columns(cols)
+    tbhdu.writeto(output_file, overwrite=True)
+
+
+def split_files(in_file, ra_str, dec_str, nside, path):
+    """This function split a main file into small catalogs, based on
+    HealPix ipix files, with nside=nside.
+
+    Parameters
+    ----------
+    in_file : str
+        Input file.
+    ra_str : str
+        Label of RA coordinate.
+    dec_str : str
+        Label of DEC coordinate.
+    nside : int
+        Nside to split small catalogs.
+    path : str
+        Path to output files.
+
+    Returns
+    -------
+    list
+        Name and path of output files.
+    """
+
+    os.system('mkdir -p ' + path)
+
+    data = getdata(in_file)
+    t = Table.read(in_file)
+    label_columns = t.colnames
+    t_format = []
+    for i in label_columns:
+        t_format.append(t[i].info.dtype)
+    HPX = hp.ang2pix(nside, data[ra_str],
+                     data[dec_str], nest=True, lonlat=True)
+
+    HPX_un = np.unique(HPX)
+
+    for j in HPX_un:
+        cond = (HPX == j)
+        data_ = data[cond]
+        col = [i for i in range(len(label_columns))]
+
+        for i in range(len(label_columns)):
+            col[i] = fits.Column(
+                name=label_columns[i], format=t_format[i], array=data_[label_columns[i]])
+        cols = fits.ColDefs([col[i] for i in range(len(label_columns))])
+        tbhdu = fits.BinTableHDU.from_columns(cols)
+        tbhdu.writeto(path + str(j) + '.fits', overwrite=True)
+
+    return [path + str(i) + '.fits' for i in HPX_un]
+
+
+@python_app
+def clean_input_cat(file_name, ra_str, dec_str, nside):
+    """ This function removes all the stars that resides in the same ipix with
+    nside = nside. This is done to simulate the features of real catalogs based on
+    detections from SExtractor, where objects very close to each other are
+    interpreted as a single object. That is specially significant to
+    stellar clusters, where the stellar crowding in images creates a single
+    object in cluster's center, but many star in the periphery.
+    This function calculates the counts in each ipix with nside (usually > 2 ** 15)
+    and removes ALL of stars that resides in the same pixel.
+
+    Parameters
+    ----------
+    file_name : str
+        Name of input file.
+    ra_str : str
+        Label for RA coordinate.
+    dec_str : str
+        Label for DEC coordinate.
+    nside : int
+        Nside to be populated.
+    """
+
+    output_file = file_name.split('.')[0] + '_clean.fits'
+
+    data = getdata(file_name)
+    t = Table.read(file_name)
+    label_columns = t.colnames
+    t_format = []
+    for i in label_columns:
+        t_format.append(t[i].info.dtype)
+    HPX = hp.ang2pix(nside, data[ra_str],
+                     data[dec_str], nest=True, lonlat=True)
+
+    HPX_idx_sort = np.argsort(HPX)
+
+    HPX_sort = [HPX[i] for i in HPX_idx_sort]
+    data_sort = data[HPX_idx_sort]
+
+    a, HPX_idx = np.unique(HPX_sort, return_inverse=True)
+
+    # original order not preserved!
+    HPX_un, HPX_counts = np.unique(HPX_sort, return_counts=True)
+
+    HPX_single_star_pix = [
+        j for i, j in enumerate(HPX_un) if HPX_counts[i] < 2]
+
+    data_clean = np.array([data_sort[:][i] for i, j in enumerate(HPX_idx) if
+                           HPX_un[j] in HPX_single_star_pix])
+
+    col = [i for i in range(len(label_columns))]
+
+    for i, j in enumerate(label_columns):
+        col[i] = fits.Column(
+            name=label_columns[i], format=t_format[i], array=data_clean[:, i])
+    cols = fits.ColDefs([col[i] for i in range(len(label_columns))])
+    tbhdu = fits.BinTableHDU.from_columns(cols)
+    tbhdu.writeto(output_file, overwrite=True)
+
+    
 def clus_file_results(results_path, out_file, sim_clus_feat, objects_filepath):
     star_clusters_simulated = Path(results_path, out_file)
     os.system('join --nocheck-order %s %s > %s' %

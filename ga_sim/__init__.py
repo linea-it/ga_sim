@@ -19,7 +19,11 @@ from ga_sim.ga_sim import (
     read_cat,
     gen_clus_file,
     read_error,
-    clus_file_results
+    clus_file_results,
+    plot_clusters_clean,
+    join_cats_clean,
+    split_files,
+    clean_input_cat
 )
 from ga_sim.plot import (
     unnamed_plot,
