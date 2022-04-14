@@ -6,14 +6,77 @@ import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io.fits import getdata
 from pathlib import Path
-
 from ga_sim.ga_sim import radec2GCdist
-
-# TODO: Identificar em qual função foi usada está opção
 mpl.rcParams["legend.numpoints"] = 1
 
-# TODO: Renomear essa função!
-def unnamed_plot(star_clusters_simulated):
+
+def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half_size_plot=0.01):
+    """_summary_
+
+    Parameters
+    ----------
+    ipix_cats : list
+        List of catalogs with all stars.
+    ipix_clean_cats : list
+        List of catalogs with stars filtered.
+    nside : int
+        Nside of pixelizations.
+    half_size_plot : float, optional
+        Size to be seen on plots. Usually twice the angular size of exponential
+        profiles of clusters. Units: degrees.
+    """
+    len_ipix = len(ipix_clean_cats)
+
+    ipix = [int((i.split('/')[-1]).split('.')[0]) for i in ipix_cats]
+
+    ra_cen, dec_cen = hp.pix2ang(nside, ipix, nest=True, lonlat=True)
+    half_size_plot = 0.01
+    tot_clus = 0
+    for i in range(len_ipix):
+        data = fits.getdata(ipix_cats[i])
+        RA_orig = data[ra_str]
+        DEC_orig = data[dec_str]
+        if len(RA_orig[(RA_orig < ra_cen[i] + half_size_plot) & (RA_orig > ra_cen[i] - half_size_plot) &
+                       (DEC_orig < dec_cen[i] + half_size_plot) & (DEC_orig > dec_cen[i] - half_size_plot)]) > 10.:
+            tot_clus += 1
+    fig, ax = plt.subplots(int(tot_clus / 4) + 1, 4, figsize=(16, tot_clus))
+    j = 0
+    for i in range(len(ax[:,0])):
+        for k in range(len(ax[0, :])):
+            ax[i, k].set_xticks([])
+            ax[i, k].set_yticks([])
+
+    for i in range(len_ipix):
+        data = fits.getdata(ipix_cats[i])
+        RA_orig = data[ra_str]
+        DEC_orig = data[dec_str]
+
+        if len(RA_orig[(RA_orig < ra_cen[i] + half_size_plot) & (RA_orig > ra_cen[i] - half_size_plot) &
+                       (DEC_orig < dec_cen[i] + half_size_plot) & (DEC_orig > dec_cen[i] - half_size_plot)]) > 10.:
+            line = int(j / 4)
+            col = int(j % 4)
+            data = fits.getdata(ipix_clean_cats[i])
+            RA = data[ra_str]
+            DEC = data[dec_str]
+            ax[line, col].scatter(
+                RA_orig, DEC_orig, edgecolor='b', color='None', s=20, label='All stars')
+            ax[line, col].set_xlim(
+                [ra_cen[i] + half_size_plot, ra_cen[i] - half_size_plot])
+            ax[line, col].set_ylim(
+                [dec_cen[i] - half_size_plot, dec_cen[i] + half_size_plot])
+            ax[line, col].scatter(RA, DEC, color='r', s=2, label='Filtered stars')
+            ax[line, col].set_xlim(
+                [ra_cen[i] + half_size_plot, ra_cen[i] - half_size_plot])
+            ax[line, col].set_ylim(
+                [dec_cen[i] - half_size_plot, dec_cen[i] + half_size_plot])
+            ax[line, col].set_title('Ipix='+str(ipix[i]), y= 0.9, pad=8) #{x=ra_cen[i], y=dec_cen[i], pad=8)
+            ax[line, col].legend(loc=3)
+            j += 1
+    plt.subplots_adjust(wspace=0, hspace=0)
+    plt.show()
+
+    
+def general_plots(star_clusters_simulated):
 
     PIX_sim, NSTARS, MAG_ABS_V, RA, DEC, R_EXP, ELL, PA, MASS, DIST = np.loadtxt(
         star_clusters_simulated,

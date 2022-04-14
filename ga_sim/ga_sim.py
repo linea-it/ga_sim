@@ -15,60 +15,7 @@ from pathlib import Path
 from itertools import compress
 
 
-def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, half_size_plot=0.01):
-    """_summary_
-
-    Parameters
-    ----------
-    ipix_cats : list
-        List of catalogs with all stars.
-    ipix_clean_cats : list
-        List of catalogs with stars filtered.
-    nside : int
-        Nside of pixelizations.
-    half_size_plot : float, optional
-        Size to be seen on plots. Usually twice the angular size of exponential
-        profiles of clusters. Units: degrees.
-    """
-    len_ipix = len(ipix_clean_cats)
-
-    ipix = [int((i.split('/')[-1]).split('.')[0]) for i in ipix_cats]
-
-    ra_cen, dec_cen = hp.pix2ang(nside, ipix, nest=True, lonlat=True)
-    half_size_plot = 0.01
-    fig, ax = plt.subplots(len_ipix, 4, figsize=(18, 4 * len_ipix))
-    j = 0
-    for i in range(len_ipix):
-        line = int(j / 4)
-        col = int(j % 4)
-        data = fits.getdata(ipix_cats[i])
-        RA_orig = data[ra_str]
-        DEC_orig = data[dec_str]
-        if len(RA_orig[(RA_orig < ra_cen[i] + half_size_plot) & (RA_orig > ra_cen[i] - half_size_plot) &
-                       (DEC_orig < dec_cen[i] + half_size_plot) & (DEC_orig > dec_cen[i] - half_size_plot)]) > 10.:
-            data = fits.getdata(ipix_clean_cats[i])
-            RA = data[ra_str]
-            DEC = data[dec_str]
-            ax[line, col].scatter(
-                RA_orig, DEC_orig, edgecolor='b', color='None', s=20)
-            ax[line, col].set_xlim(
-                [ra_cen[i] + half_size_plot, ra_cen[i] - half_size_plot])
-            ax[line, col].set_ylim(
-                [dec_cen[i] - half_size_plot, dec_cen[i] + half_size_plot])
-            ax[line, col].scatter(RA, DEC, color='r', s=2)
-            ax[line, col].set_xlim(
-                [ra_cen[i] + half_size_plot, ra_cen[i] - half_size_plot])
-            ax[line, col].set_ylim(
-                [dec_cen[i] - half_size_plot, dec_cen[i] + half_size_plot])
-            ax[line, col].set_xticks([])
-            ax[line, col].set_yticks([])
-            ax[line, col].set_title(str(ipix[i]), x=0.5, y=0.6, fontsize=8)
-            j += 1
-    plt.suptitle('Blue: original, Red: filtered stars; Each poststamp has {:.2f} arcmin'.format(
-        2. * 60. * half_size_plot))
-    plt.subplots_adjust(wspace=0, hspace=0)
-    plt.show()
-    
+   
     
 def join_cats_clean(ipix_cats, output_file, ra_str, dec_str):
     """This function writes a single Fits file catalog gathering
@@ -132,7 +79,7 @@ def split_files(in_file, ra_str, dec_str, nside, path):
         Name and path of output files.
     """
 
-    os.system('mkdir -p ' + path)
+    # os.system('mkdir -p ' + path)
 
     data = getdata(in_file)
     t = Table.read(in_file)
@@ -155,12 +102,12 @@ def split_files(in_file, ra_str, dec_str, nside, path):
                 name=label_columns[i], format=t_format[i], array=data_[label_columns[i]])
         cols = fits.ColDefs([col[i] for i in range(len(label_columns))])
         tbhdu = fits.BinTableHDU.from_columns(cols)
-        tbhdu.writeto(path + str(j) + '.fits', overwrite=True)
+        tbhdu.writeto(path + '/' + str(j) + '.fits', overwrite=True)
+    
+    return [(path + '/' + str(i) + '.fits') for i in HPX_un]
 
-    return [path + str(i) + '.fits' for i in HPX_un]
 
-
-@python_app
+# @python_app
 def clean_input_cat(file_name, ra_str, dec_str, nside):
     """ This function removes all the stars that resides in the same ipix with
     nside = nside. This is done to simulate the features of real catalogs based on
@@ -217,6 +164,7 @@ def clean_input_cat(file_name, ra_str, dec_str, nside):
             name=label_columns[i], format=t_format[i], array=data_clean[:, i])
     cols = fits.ColDefs([col[i] for i in range(len(label_columns))])
     tbhdu = fits.BinTableHDU.from_columns(cols)
+    
     tbhdu.writeto(output_file, overwrite=True)
 
     
@@ -1224,48 +1172,6 @@ def write_sim_clus_features(
                 file=out_file,
             )
     return filepath
-
-
-def split_output_hpx(file_in, out_dir):
-
-    path = Path(out_dir)
-    path.mkdir(parents=True, exist_ok=True)
-
-    data = getdata(file_in)
-    GC = data["GC"]
-    ra = data["ra"]
-    dec = data["dec"]
-    mag_g_with_err = data["mag_g_with_err"]
-    mag_r_with_err = data["mag_r_with_err"]
-    magerr_g = data["magerr_g"]
-    magerr_r = data["magerr_r"]
-    HPX64 = data["HPX64"]
-
-    HPX_un = set(HPX64)
-
-    for i in HPX_un:
-
-        filepath = Path(out_dir, "%s.fits" % i)
-
-        cond = HPX64 == i
-
-        col0 = fits.Column(name="GC", format="I", array=GC[cond])
-        col1 = fits.Column(name="ra", format="D", array=ra[cond])
-        col2 = fits.Column(name="dec", format="D", array=dec[cond])
-        col3 = fits.Column(
-            name="mag_g_with_err", format="E", array=mag_g_with_err[cond]
-        )
-        col4 = fits.Column(
-            name="mag_r_with_err", format="E", array=mag_r_with_err[cond]
-        )
-        col5 = fits.Column(name="magerr_g", format="E", array=magerr_g[cond])
-        col6 = fits.Column(name="magerr_r", format="E", array=magerr_r[cond])
-        col7 = fits.Column(
-            name="HPX64", format="K", array=np.repeat(int(i), len(GC[cond]))
-        )
-        cols = fits.ColDefs([col0, col1, col2, col3, col4, col5, col6, col7])
-        tbhdu = fits.BinTableHDU.from_columns(cols)
-        tbhdu.writeto(filepath, overwrite=True)
 
 
 def SplitFtpHPX(
