@@ -14,6 +14,56 @@ from scipy.stats import expon
 from pathlib import Path
 from itertools import compress
 
+# @python_app
+
+
+def clean_input_cat_dist(file_name, ra_str, dec_str, max_dist_arcsec):
+    """ This function removes stars closer than max_dist_arcsec. That is specially significant to
+    stellar clusters, where the stellar crowding in images creates a single
+    object in cluster's center, but many star in the periphery.
+
+    Parameters
+    ----------
+    file_name : str
+        Name of input file.
+    ra_str : str
+        Label for RA coordinate.
+    dec_str : str
+        Label for DEC coordinate.
+    max_dist_arcsec : float
+        Stars closer than this par will be removed. Units: arcsec.
+    """
+
+    output_file = file_name.split('.')[0] + '_clean_dist.fits'
+
+    data = getdata(file_name)
+    t = Table.read(file_name)
+    label_columns = t.colnames
+    t_format = []
+    for i in label_columns:
+        t_format.append(t[i].info.dtype)
+
+    clean_idx = []
+
+    RA = data[ra_str]
+    DEC = data[dec_str]
+
+    for i, j in enumerate(RA):
+        dist = dist_ang(RA, DEC, j, DEC[i])
+        if (set(dist)[1] > max_dist_arcsec / 3600): clean_idx.append(i)
+
+    data_clean = np.array([data[:][i] for i in clean_idx])
+
+    col = [i for i in range(len(label_columns))]
+
+    for i, j in enumerate(label_columns):
+        col[i] = fits.Column(
+            name=label_columns[i], format=t_format[i], array=data_clean[:, i])
+    cols = fits.ColDefs([col[i] for i in range(len(label_columns))])
+    tbhdu = fits.BinTableHDU.from_columns(cols)
+
+    tbhdu.writeto(output_file, overwrite=True)
+
 
 def exp_prof(rexp, N_stars, max_length=10):
     """This function distributes stars radially following an exponential
