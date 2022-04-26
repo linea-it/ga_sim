@@ -15,12 +15,39 @@ from pathlib import Path
 from itertools import compress
 
 
-   
-    
+def exp_prof(rexp, N_stars, max_length=10):
+    """This function distributes stars radially following an exponential
+    density profile. This function does not distribute stars into 3D,
+    only in 1-D, which is complemented in additional code.
+
+    Parameters
+    ----------
+    rexp : float
+        Scale radius of cluster, in degrees or parsecs.
+    N_stars : int
+        Total number counts.
+    max_length : float
+        Maximum distance of star in scale radius.
+
+    Returns
+    -------
+    array
+        Radius of stars following exponential density profile.
+    """
+    rad_star = []
+    while len(rad_star) < N_stars:
+        rd_nmb = np.random.rand(1, 2)
+        rad = rd_nmb[0][0] * max_length * rexp
+        hei = rd_nmb[0][1] * 2 * np.pi * rexp / np.e
+        if hei <= np.exp(-rad / rexp) * 2 * np.pi * rad:
+            rad_star.append(rad)
+    return np.asarray(rad_star)
+
+
 def join_cats_clean(ipix_cats, output_file, ra_str, dec_str):
     """This function writes a single Fits file catalog gathering
     data read in all the ipix_cats.
-    
+
     Parameters
     ----------
     ipix_cats : list
@@ -103,7 +130,7 @@ def split_files(in_file, ra_str, dec_str, nside, path):
         cols = fits.ColDefs([col[i] for i in range(len(label_columns))])
         tbhdu = fits.BinTableHDU.from_columns(cols)
         tbhdu.writeto(path + '/' + str(j) + '.fits', overwrite=True)
-    
+
     return [(path + '/' + str(i) + '.fits') for i in HPX_un]
 
 
@@ -164,18 +191,50 @@ def clean_input_cat(file_name, ra_str, dec_str, nside):
             name=label_columns[i], format=t_format[i], array=data_clean[:, i])
     cols = fits.ColDefs([col[i] for i in range(len(label_columns))])
     tbhdu = fits.BinTableHDU.from_columns(cols)
-    
+
     tbhdu.writeto(output_file, overwrite=True)
 
-    
+
 def clus_file_results(results_path, out_file, sim_clus_feat, objects_filepath):
+    """This function uses the join command to join a file with initial features
+    of the simulated clusters to a file with number of stars and absolute
+    magnitude since the last file is created after the simulations.
+
+    Parameters
+    ----------
+    results_path : str
+        Path to final results file.
+    out_file : str
+        Name of final results file.
+    sim_clus_feat : str
+        Name of file with initial features of clusters.
+    objects_filepath : str
+        Name of file with n_stars and absolute magnitude.
+    """
     star_clusters_simulated = Path(results_path, out_file)
     os.system('join --nocheck-order %s %s > %s' %
               (sim_clus_feat, objects_filepath, star_clusters_simulated))
 
 
 def read_error(infile, to_add_mag1, to_add_mag2):
-    mag1_, err1_, err2_=np.loadtxt(infile, usecols=(0, 1, 2), unpack=True)
+    """This function reads the photometric error of survey.
+    Values are added to simulate realistic photometric errors.
+
+    Parameters
+    ----------
+    infile : str
+        Name of file with errors.
+    to_add_mag1 : float
+        Magnitude error to be added to mag1.
+    to_add_mag2 : float
+        Magnitude error to be added to mag2.
+
+    Returns
+    -------
+    list
+        List of magnitudes and errors in band 1 and 2.
+    """
+    mag1_, err1_, err2_ = np.loadtxt(infile, usecols=(0, 1, 2), unpack=True)
     err1_ += to_add_mag1
     err2_ += to_add_mag2
     return mag1_, err1_, err2_
@@ -184,15 +243,65 @@ def read_error(infile, to_add_mag1, to_add_mag2):
 def gen_clus_file(ra_min, ra_max, dec_min, dec_max, nside_ini, border_extract,
                   mM_min, mM_max, log10_rexp_min, log10_rexp_max, log10_mass_min,
                   log10_mass_max, ell_min, ell_max, pa_min, pa_max, results_path):
-    cell_area=hp.nside2pixarea(nside_ini, degrees=True)
+    """This function generates the file with features of simulated clusters,
+    based on numerical simulations within the range of parameters.
 
-    area=(
+    Parameters
+    ----------
+    ra_min : float
+        Minimum value of RA, in degrees.
+    ra_max : float
+        Maximum value of RA, in degrees.
+    dec_min : _type_
+        Minimum value of DEC, in degrees.
+    dec_max : _type_
+        Maximum value of DEC, in degrees.
+    nside_ini : int
+        Nside where the clusters simulated will reside (in the center of ipix).
+    border_extract : float
+        The angular border (in degrees) where the clusters will not be simulated.
+    mM_min : float
+        Minimum value for distance modulus (in magnitudes).
+    mM_max : _type_
+        Maximum value for distance modulus (in magnitudes).
+    log10_rexp_min : float
+        Minimum value for log_10 of exponential radius, in parsecs.
+    log10_rexp_max : float
+        Maximum value for log_10 of exponential radius, in parsecs.
+    log10_mass_min : float
+        Minimum value for log_10 of visible mass (mass of stars that are in
+        the range of magnitudes), in Msun.
+    log10_mass_max : float
+        Maximum value for log_10 of visible mass (mass of stars that are in
+        the range of magnitudes), in Msun.
+    ell_min : float
+        Minimum value for ellipticity (b-a)/a.
+    ell_max : float
+        Maximum value for ellipticity (b-a)/a.
+    pa_min : float
+        Minimum value for positional angle (oriented to ), in degrees.
+    pa_max : float
+        Maximum value for positional angle (oriented to ), in degrees.
+    results_path : str
+        Path where the final file is written.
+
+    Returns
+    -------
+    list
+        RA_pix, DEC_pix, r_exp, ell, pa, dist, mass, mM, hp_sample_un
+        Position of the center of ipix, exponential radius in parsecs,
+        ellipticity. positional angle, distance in parsecs, mass in 
+        Sun masses, distance modulus, and list of ipix sampled.
+    """
+    cell_area = hp.nside2pixarea(nside_ini, degrees=True)
+
+    area = (
         (dec_max - dec_min)
         * np.cos(np.deg2rad((ra_max + ra_min) / 2.0))
         * (ra_max - ra_min)
     )
 
-    vertices=hp.ang2vec(
+    vertices = hp.ang2vec(
         [
             ra_min + border_extract,
             ra_max - border_extract,
@@ -241,6 +350,47 @@ def gen_clus_file(ra_min, ra_max, dec_min, dec_max, nside_ini, border_extract,
 
 
 def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax, outfile, AG_AV, AR_AV, ngp, sgp, results_path):
+    """Read catalog from LIneA data base.
+
+    Parameters
+    ----------
+    tablename : str
+        Name of FITS file.
+    ra_min : float
+        Minimum value of RA in degrees.
+    ra_max : float
+        Maximum value of RA in degrees.
+    dec_min : float
+        Minimum value of DEC in degrees.
+    dec_max : float
+        Maximum value of RA in degrees.
+    mmin : float
+        Minimum value of magnitude.
+    mmax : float
+        Maximum value of magnitude.
+    cmin : float
+        Minimum value of color.
+    cmax : float
+        Maximum value of color.
+    outfile : str
+       Name of output file.
+    AG_AV : float
+        Relation of extinction in g band over extinction in V band.
+    AR_AV : _type_
+        Relation of extinction in r band over extinction in V band.
+    ngp : array-like
+        Map of reddening for Northern Galactic Hemisphere.
+    sgp : array-like
+        Map of reddening for Southern Galactic Hemisphere.
+    results_path : str
+        Path where the results will be written.
+
+    Returns
+    -------
+    list
+        RA, DEC, MAG_G, MAGERR_G, MAG_R, MAGERR_R
+        Contents of table where magnitudes are free-extnction (top of Galaxy).
+    """
     engine = sqlalchemy.create_engine(
         'postgresql://untrustedprod:untrusted@desdb4.linea.gov.br:5432/prod_gavo')
     conn = engine.connect()
@@ -313,15 +463,15 @@ def dist_ang(ra1, dec1, ra_ref, dec_ref):
     Returns
     -------
     list
-        a list of floats with the angular distance of the first couple of
-        inputs to the position of reference.
+        a list of floats with the angular distance in degrees of the
+        first couple of inputs to the position of reference.
 
     """
     costheta = np.sin(np.radians(dec_ref)) * np.sin(np.radians(dec1)) + np.cos(
         np.radians(dec_ref)
     ) * np.cos(np.radians(dec1)) * np.cos(np.radians(ra1 - ra_ref))
     dist_ang = np.arccos(costheta)
-    return np.rad2deg(dist_ang)  # degrees
+    return np.rad2deg(dist_ang)
 
 
 def download_iso(version, phot_system, Z, age, av_ext, out_file):
@@ -645,8 +795,6 @@ def unc(mag, mag_table, err_table):
     return err_interp
 
 
-# @python_app
-# TODO para essa função virar um Parsl App precisa importar todas as dependencias
 def faker(
     N_stars_cmd,
     frac_bin,
@@ -829,16 +977,13 @@ def faker(
     p_values[star[:, 2] > mmax] = 1.0e-9
     p_values[star[:, 2] < mag_ref_comp] = 1.0
 
-    # TODO: O que significa aaaa? melhorar o nome da variavel
-    aaaa = np.random.choice(
+    star_comp = np.random.choice(
         len(star[:, 0]), N_stars_cmd, replace=False, p=p_values / np.sum(p_values)
     )
 
-    r = expon.rvs(size=N_stars_cmd)
-    r *= rexp
+    rexp_deg = (180 / np.pi) * np.arctan(rexp / dist)
 
-    rexp = (180 / np.pi) * np.arctan(rexp / dist)  # in deg
-    r = (180 / np.pi) * np.arctan(r / dist)  # in deg
+    r = exp_prof(rexp_deg, N_stars_cmd)
 
     phi = 2 * np.pi * np.random.rand(N_stars_cmd)
 
@@ -853,11 +998,10 @@ def faker(
     star[:, 0] = x0 + (r_ell * np.sin(phi_ell)) / np.cos(np.deg2rad(y0))
     star[:, 1] = y0 + r_ell * np.cos(phi_ell)
 
-    # TODO: A criação deste arquivo poderia em formato csv
     filename = "%s_clus.dat" % str(hpx)
     filepath = Path(output_path, filename)
     with open(filepath, "w") as out_file:
-        for ii in aaaa:  # range(len(star[:,0])):
+        for ii in star_comp:  # range(len(star[:,0])):
             cor = star[ii, 2] + star[ii, 3] - (star[ii, 5] + star[ii, 6])
             mmag = star[ii, 2] + star[ii, 3]
             if (mmag < mmax) & (mmag > mmin) & (cor >= cmin) & (cor <= cmax):
