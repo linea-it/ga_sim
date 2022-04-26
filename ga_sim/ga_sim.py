@@ -49,8 +49,12 @@ def clean_input_cat_dist(file_name, ra_str, dec_str, max_dist_arcsec):
     DEC = data[dec_str]
 
     for i, j in enumerate(RA):
-        dist = dist_ang(RA, DEC, j, DEC[i])
-        if (set(dist)[1] > max_dist_arcsec / 3600): clean_idx.append(i)
+        length = 0.1
+        cond = (RA < j + length)&(RA > j - length)&(DEC < DEC[i] + length)&(DEC > DEC[i] - length)
+        RA_ = RA[cond]
+        DEC_ = DEC[cond]
+        dist = dist_ang(RA_, DEC_, j, DEC[i])
+        if (sorted(set(dist))[1] > max_dist_arcsec / 3600): clean_idx.append(i)
 
     data_clean = np.array([data[:][i] for i in clean_idx])
 
