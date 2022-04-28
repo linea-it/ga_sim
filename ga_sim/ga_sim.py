@@ -446,7 +446,7 @@ def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax
         Contents of table where magnitudes are free-extnction (top of Galaxy).
     """
     engine = sqlalchemy.create_engine(
-        'postgresql://untrustedprod:untrusted@desdb4.linea.gov.br:5432/prod_gavo')
+        'postgresql://untrustedprod:untrusted@desdb6.linea.gov.br:5432/prod_gavo')
     conn = engine.connect()
 
     query = 'select ra, dec, mag_g, magerr_g, mag_r, magerr_r from %s where (ra > %s) and (ra <%s) and (dec > %s) and (dec < %s)' % (
