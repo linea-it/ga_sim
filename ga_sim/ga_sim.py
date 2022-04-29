@@ -868,7 +868,7 @@ def faker(
     err1_,
     err2_,
     file_iso,
-    output_path=Path("results/fake_clus"),
+    output_path
 ):
     """Creates an array with positions, magnitudes, magnitude errors and magnitude
     uncertainties for the simulated stars in two bands.
@@ -932,8 +932,7 @@ def faker(
     """
 
     # Cria o diretório de output se não existir
-    output_path = Path(output_path)
-    output_path.mkdir(parents=True, exist_ok=True)
+    os.system('mkdir -p ' + output_path)
 
     mass, mag1, mag2 = np.loadtxt(file_iso, usecols=(3, 26, 27), unpack=True)
 
@@ -1054,6 +1053,7 @@ def faker(
 
     filename = "%s_clus.dat" % str(hpx)
     filepath = Path(output_path, filename)
+
     with open(filepath, "w") as out_file:
         for ii in star_comp:  # range(len(star[:,0])):
             cor = star[ii, 2] + star[ii, 3] - (star[ii, 5] + star[ii, 6])
