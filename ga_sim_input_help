@@ -1,0 +1,26 @@
+# Main settings:
+nside_ini = 64  # the nside in which pixel star clusters will be inserted in the center
+nside_ftp = 4096  # nside of the footprint map
+nside3 = 2 ** 18  # pixelization of the star's position
+ra_min, ra_max = 45, 55  # 5., 85. # limits in ra of the simulated map
+dec_min, dec_max = -30, -20  # -60., -20. # limits in dec of the simulated map
+mmin, mmax, cmin, cmax = 17.00, 24.00, - \
+    0.4, 1.6  # magnitude and color limits of stars
+ell_min, ell_max = 0.00, 0.20  # limits in ellipticity of star clusters simulated
+pa_min, pa_max = 0., 180.  # limits in position angle
+# limits for the visible mass of the clusters,
+log10_mass_min, log10_mass_max = 3.00, 3.10
+age_simulation = 1.e10  # in years
+Z_simulation = 0.001  # Assuming Z_sun = 0.0152
+av_simulation = 0.000  # It must be zero.
+padova_version_code = '3.6'
+
+# avoiding simulate many stars unseen in the catalog given the limiting magnitude
+mM_min, mM_max = 20.001, 20.002  # limits in modulus distance
+log10_rexp_min, log10_rexp_max = 0.60, 1.00  # limits in exponential radius
+
+survey = 'des'  # survey name
+# fraction of binaries (amount of stars in binaries = Nbinaries / Ntotal)
+frac_bin = 0.5
+IMF_author = 'Kroupa'  # selection of initial mass function
+border_extract = 1.  # remove star clusters in the edge of the map, in degrees
