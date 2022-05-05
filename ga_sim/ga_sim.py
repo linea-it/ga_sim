@@ -17,7 +17,7 @@ from itertools import compress
 # @python_app
 
 
-def king_prof(rc, rt, N_stars):
+def king_prof(N_stars, rc, rt):
     """This function distributes stars in a King profile, the number-density profile
     most applied to globular clusters. The final array is the stars distributes along
     projected radii.
@@ -26,19 +26,17 @@ def king_prof(rc, rt, N_stars):
 
     Parameters
     ----------
+    N_stars : int
+        Total star counts.
     rc : float
         Core radius, not specified units.
     rt : float
         Spherical tidal radius.
-    N_stars : int
-        Total star counts.
-    max_length : float, optional
-        Maximum length of , by default 1.
 
     Returns
     -------
-    _type_
-        _description_
+    array-like
+        Radial distribution of stars.
     """
     rad_star = []
     radius = np.linspace(0, 1., 1000)
@@ -109,19 +107,19 @@ def clean_input_cat_dist(file_name, ra_str, dec_str, max_dist_arcsec):
     tbhdu.writeto(output_file, overwrite=True)
 
 
-def exp_prof(rexp, N_stars, max_length=10):
+def exp_prof(N_stars, rexp, max_length=10):
     """This function distributes stars radially following an exponential
     density profile. This function does not distribute stars into 3D,
     only in 1-D, which is complemented in additional code.
 
     Parameters
     ----------
-    rexp : float
-        Scale radius of cluster, in degrees or parsecs.
     N_stars : int
         Total number counts.
-    max_length : float
-        Maximum distance of star in scale radius.
+    rexp : float
+        Scale radius of cluster, in degrees or parsecs.
+    max_length : float, optional
+        Maximum distance of star in scale radius, by default 10
 
     Returns
     -------
@@ -1076,7 +1074,7 @@ def faker(
 
     rexp_deg = (180 / np.pi) * np.arctan(rexp / dist)
 
-    r = exp_prof(rexp_deg, N_stars_cmd)
+    r = exp_prof(N_stars_cmd, rexp_deg)
 
     phi = 2 * np.pi * np.random.rand(N_stars_cmd)
 
