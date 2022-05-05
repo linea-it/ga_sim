@@ -17,6 +17,44 @@ from itertools import compress
 # @python_app
 
 
+def king_prof(rc, rt, N_stars):
+    """This function distributes stars in a King profile, the number-density profile
+    most applied to globular clusters. The final array is the stars distributes along
+    projected radii.
+    Reference:
+    https://www.aanda.org/articles/aa/full/2008/03/aa8616-07/aa8616-07.html
+
+    Parameters
+    ----------
+    rc : float
+        Core radius, not specified units.
+    rt : float
+        Spherical tidal radius.
+    N_stars : int
+        Total star counts.
+    max_length : float, optional
+        Maximum length of , by default 1.
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    rad_star = []
+    radius = np.linspace(0, 1., 1000)
+    rc /= rt
+    peak = np.max(2 * np.pi * radius * ((1 / np.sqrt(1 + (radius / rc)
+                  ** 2)) - (1 / np.sqrt(1 + (1. / rc) ** 2))) ** 2)
+    while len(rad_star) < N_stars:
+        rd_nmb = np.random.rand(1, 2)
+        rad = rd_nmb[0][0]
+        hei = rd_nmb[0][1] * peak
+        if hei <= 2 * np.pi * rad * ((1 / np.sqrt(1 + (rad / rc) ** 2)) -
+                                     (1 / np.sqrt(1 + (1. / rc) ** 2))) ** 2:
+            rad_star.append(rad)
+    return np.multiply(rad_star, rt)
+
+
 def clean_input_cat_dist(file_name, ra_str, dec_str, max_dist_arcsec):
     """ This function removes stars closer than max_dist_arcsec. That is specially significant to
     stellar clusters, where the stellar crowding in images creates a single
@@ -50,11 +88,13 @@ def clean_input_cat_dist(file_name, ra_str, dec_str, max_dist_arcsec):
 
     for i, j in enumerate(RA):
         length = 0.1
-        cond = (RA < j + length)&(RA > j - length)&(DEC < DEC[i] + length)&(DEC > DEC[i] - length)
+        cond = (RA < j + length) & (RA > j - length) & (DEC <
+                                                        DEC[i] + length) & (DEC > DEC[i] - length)
         RA_ = RA[cond]
         DEC_ = DEC[cond]
         dist = dist_ang(RA_, DEC_, j, DEC[i])
-        if (sorted(set(dist))[1] > max_dist_arcsec / 3600): clean_idx.append(i)
+        if (sorted(set(dist))[1] > max_dist_arcsec / 3600):
+            clean_idx.append(i)
 
     data_clean = np.array([data[:][i] for i in clean_idx])
 
