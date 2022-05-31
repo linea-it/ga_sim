@@ -10,7 +10,34 @@ from ga_sim.ga_sim import radec2GCdist
 mpl.rcParams["legend.numpoints"] = 1
 
 
-def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half_size_plot=0.01):
+def read_real_cat(cat_DG = "catalogs/objects_in_ref.dat", cat_GC = "catalogs/Harris_updated.dat"):
+
+    ra_DG, dec_DG, dist_kpc_DG, Mv_DG, rhl_pc_DG, FeH_DG = np.loadtxt(
+        cat_DG, usecols=(0, 1, 4, 8, 10, 11), unpack=True
+    )
+
+    name_DG = np.loadtxt(
+        cat_DG, dtype=str, usecols=(2), unpack=True
+    )
+
+    #  Catalogo Harris_updated.dat
+    # 0-Name 1-L 2-B 3-R_gc	4-Fe/H 5-M-M 6-Mv 7-rhl arcmin
+    R_MW_GC, FeH_GC, mM_GC, Mv_GC, rhl_arcmin_GC = np.loadtxt(
+        cat_GC, usecols=(3, 4, 5, 6, 7), unpack=True
+    )
+    
+    dist_kpc_GC = 10 ** ((mM_GC / 5) - 2)
+    
+    rhl_pc_GC = 1000 * dist_kpc_GC * np.tan(rhl_arcmin_GC / (60 * 180 / np.pi))
+    
+    name_GC = np.loadtxt(
+        cat_GC, dtype=str, usecols=(0), unpack=True
+    )
+
+    return name_DG, ra_DG, dec_DG, dist_kpc_DG, Mv_DG, rhl_pc_DG, FeH_DG, name_GC, R_MW_GC, FeH_GC, mM_GC, Mv_GC, rhl_pc_GC, dist_kpc_GC, rhl_arcmin_GC
+
+
+def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half_size_plot, output_dir):
     """_summary_
 
     Parameters
@@ -24,6 +51,8 @@ def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half
     half_size_plot : float, optional
         Size to be seen on plots. Usually twice the angular size of exponential
         profiles of clusters. Units: degrees.
+    output_dir : str
+        Folder where the plots will be saved.
     """
     len_ipix = len(ipix_clean_cats)
 
@@ -39,7 +68,7 @@ def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half
         if len(RA_orig[(RA_orig < ra_cen[i] + half_size_plot) & (RA_orig > ra_cen[i] - half_size_plot) &
                        (DEC_orig < dec_cen[i] + half_size_plot) & (DEC_orig > dec_cen[i] - half_size_plot)]) > 10.:
             tot_clus += 1
-    fig, ax = plt.subplots(int(tot_clus / 4) + 1, 4, figsize=(16, tot_clus))
+    fig, ax = plt.subplots(tot_clus, 3, figsize=(12, 4*tot_clus))
     j = 0
     for i in range(len(ax[:,0])):
         for k in range(len(ax[0, :])):
@@ -53,11 +82,30 @@ def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half
 
         if len(RA_orig[(RA_orig < ra_cen[i] + half_size_plot) & (RA_orig > ra_cen[i] - half_size_plot) &
                        (DEC_orig < dec_cen[i] + half_size_plot) & (DEC_orig > dec_cen[i] - half_size_plot)]) > 10.:
-            line = int(j / 4)
-            col = int(j % 4)
+            line = j
             data = fits.getdata(ipix_clean_cats[i])
             RA = data[ra_str]
             DEC = data[dec_str]
+            col = 0
+            ax[line, col].scatter(
+                RA_orig, DEC_orig, edgecolor='b', color='None', s=20, label='All stars')
+            ax[line, col].set_xlim(
+                [ra_cen[i] + half_size_plot, ra_cen[i] - half_size_plot])
+            ax[line, col].set_ylim(
+                [dec_cen[i] - half_size_plot, dec_cen[i] + half_size_plot])
+            ax[line, col].set_title('Ipix='+str(ipix[i]), y= 0.9, pad=8) #{x=ra_cen[i], y=dec_cen[i], pad=8)
+            ax[line, col].legend(loc=3)
+
+            col = 1
+            ax[line, col].scatter(RA, DEC, edgecolor='b', color='None', s=20, label='Filtered stars')
+            ax[line, col].set_xlim(
+                [ra_cen[i] + half_size_plot, ra_cen[i] - half_size_plot])
+            ax[line, col].set_ylim(
+                [dec_cen[i] - half_size_plot, dec_cen[i] + half_size_plot])
+            ax[line, col].set_title('Ipix='+str(ipix[i]), y= 0.9, pad=8) #{x=ra_cen[i], y=dec_cen[i], pad=8)
+            ax[line, col].legend(loc=3)
+            
+            col = 2
             ax[line, col].scatter(
                 RA_orig, DEC_orig, edgecolor='b', color='None', s=20, label='All stars')
             ax[line, col].set_xlim(
@@ -73,28 +121,59 @@ def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half
             ax[line, col].legend(loc=3)
             j += 1
     plt.subplots_adjust(wspace=0, hspace=0)
+    plt.savefig(output_dir + '/clusters_with_and_without_crowded_stars.png')
     plt.show()
+    plt.close()
 
     
-def general_plots(star_clusters_simulated):
+def general_plots(star_clusters_simulated, output_dir):
+    
+    output_plots = Path(output_dir)
+    output_plots.mkdir(parents=True, exist_ok=True)
+    
+    name_DG, ra_DG, dec_DG, dist_kpc_DG, Mv_DG, rhl_pc_DG, FeH_DG, name_GC, R_MW_GC, FeH_GC, mM_GC, Mv_GC, rhl_pc_GC, dist_kpc_GC, rhl_arcmin_GC = read_real_cat()
 
     PIX_sim, NSTARS, MAG_ABS_V, RA, DEC, R_EXP, ELL, PA, MASS, DIST = np.loadtxt(
         star_clusters_simulated,
         usecols=(0, 1, 2, 6, 7, 8, 9, 10, 11, 12),
         unpack=True,
     )
-    f, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
-    ax1.scatter(np.log10(1.7 * R_EXP[MAG_ABS_V < 0.0]), MAG_ABS_V[MAG_ABS_V < 0.0])
+    f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 5))
+    ax1.scatter(np.log10(1.7 * R_EXP[MAG_ABS_V < 0.0]), MAG_ABS_V[MAG_ABS_V < 0.0], color='r', label='Sim')
+    ax1.scatter(np.log10(rhl_pc_DG), Mv_DG, color='b', marker='x', label='DG')
+    ax1.scatter(np.log10(rhl_pc_GC), Mv_GC, color='k', marker='x', label='GC')
+    #for i, j in enumerate(rhl_pc_DG):
+    #    ax1.annotate(name_DG[i], (np.log10(rhl_pc_DG[i]), Mv_DG[i]))
+    #for i, j in enumerate(rhl_pc_GC):
+    #    ax1.annotate(name_GC[i], (np.log10(rhl_pc_GC[i]), Mv_GC[i]))
     ax1.set_ylabel("M(V)")
-    ax1.set_xlabel("log10(h-l radii(pc))")
+    ax1.set_xlabel("log10(half-light radius (pc))")
+    ax1.set_xlim([np.min(np.log10(1.7 * R_EXP[MAG_ABS_V < 0.0])) - 0.1, np.max(np.log10(1.7 * R_EXP[MAG_ABS_V < 0.0])) + 0.1])
+    ax1.set_ylim([np.min(MAG_ABS_V[MAG_ABS_V < 0.0]) - 0.1, np.max(MAG_ABS_V[MAG_ABS_V < 0.0]) + 0.1])
+    ax1.legend()
 
-    ax2.scatter(MASS, MAG_ABS_V)
-    ax2.set_xlabel("mass(Msun)")
+    ax2.scatter(np.log10(1.7 * R_EXP[MAG_ABS_V < 0.0]), MAG_ABS_V[MAG_ABS_V < 0.0], color='r', label='Sim')
+    ax2.scatter(np.log10(rhl_pc_DG), Mv_DG, color='b', marker='x', label='DG')
+    ax2.scatter(np.log10(rhl_pc_GC), Mv_GC, color='k', marker='x', label='GC')
+    for i, j in enumerate(rhl_pc_DG):
+        ax2.annotate(name_DG[i], (np.log10(rhl_pc_DG[i]), Mv_DG[i]))
+    for i, j in enumerate(rhl_pc_GC):
+        ax2.annotate(name_GC[i], (np.log10(rhl_pc_GC[i]), Mv_GC[i]))
+    ax2.set_xlabel("log10(half-light radius (pc))")
+    ax2.legend()
+    
+    ax3.scatter(MASS, MAG_ABS_V, label='Sim', color='r')
+    ax3.set_xlabel("mass(Msun)")
+    ax3.set_ylim([np.min(MAG_ABS_V[MAG_ABS_V < 0.0]) - 0.1, np.max(MAG_ABS_V[MAG_ABS_V < 0.0]) + 0.1])
+    ax3.legend()
+    plt.savefig(output_dir + '/hist_MV.png')
     plt.show()
+    plt.close()
 
 
 def plot_ftp(
-    ftp_fits, star_clusters_simulated, mockcat, ra_max, ra_min, dec_min, dec_max
+    ftp_fits, star_clusters_simulated, mockcat, ra_max, ra_min, dec_min, dec_max,
+    output_dir
 ):
     """Plot footprint map to check area."""
     nside = 4096
@@ -158,8 +237,9 @@ def plot_ftp(
     axs.set_title("Distribution of stars on Footprint Map")
     axs.grid()
     plt.legend()
+    plt.savefig(output_dir + '/ftp.png')
     plt.show()
-    print(len(PIX_sim))
+    plt.close()
 
 
 def plots_ang_size(
@@ -169,14 +249,9 @@ def plots_ang_size(
     mmax,
     cmin,
     cmax,
-    output_plots=Path("results"),
+    output_plots
 ):
     """Plots to analyze the simulated clusters."""
-
-    # TODO: Seria interessante dividir essa função em duas
-    # Uma para os plots de _clus.dat
-    # Outra para os 4 plots do final.
-    # Dessa forma a geração dos plots _clus.dat poderia ser paralelizada.
 
     cmap = mpl.cm.get_cmap("inferno")
     cmap.set_under("dimgray")
@@ -200,10 +275,6 @@ def plots_ang_size(
         unpack=True,
     )
 
-    # Cria um diretório para os plots caso não exista
-    output_plots = Path(output_plots)
-    output_plots.mkdir(parents=True, exist_ok=True)
-
     for i in hp_sample_un:
 
         clus_filepath = Path(clus_path, "%s_clus.dat" % int(i))
@@ -215,16 +286,17 @@ def plots_ang_size(
             continue
 
         star = np.loadtxt(clus_filepath)
-        """
-        plt.scatter(star[:,2]-star[:,4], star[:,2], color='b')
-        plt.title('HPX ' + str(int(ii)) + ', N=' + str(len(star[:,2])))
+
+        plt.scatter(star[:,2]-star[:,4], star[:,2], color='r')
+        plt.title('HPX ' + str(int(i)) + ', N=' + str(len(star[:,2])))
         plt.ylim([mmax, mmin])
         plt.xlim([cmin, cmax])
         plt.xlabel('mag1-mag2')
         plt.ylabel('mag1')
-        plt.savefig(str(int(ii)) + '_cmd.png')
+        plt.savefig(str(int(i)) + '_cmd.png')
+        plt.show()
         plt.close()
-        """
+
         h1, xedges, yedges, im1 = plt.hist2d(
             star[:, 2] - star[:, 4],
             star[:, 2],
@@ -251,62 +323,72 @@ def plots_ang_size(
         plt.ylabel("mag1")
         plt.colorbar(im1, cmap=cmap, orientation="vertical", label="stars per bin")
         plt.savefig(plot_filepath)
+        plt.show()
         plt.close()
-
+        
+    name_DG, ra_DG, dec_DG, dist_kpc_DG, Mv_DG, rhl_pc_DG, FeH_DG, name_GC, R_MW_GC, FeH_GC, mM_GC, Mv_GC, rhl_pc_GC, dist_kpc_GC, rhl_arcmin_GC = read_real_cat()
+    
+    ang_size_DG = 60. * (180. / np.pi) * np.arctan(rhl_pc_DG / (1000. * dist_kpc_DG))
     ang_size = 60 * np.rad2deg(np.arctan(1.7 * r_exp / dist))
-    plt.hist(dist / 1000, bins=50)
+
+    plt.hist(dist / 1000, bins=np.linspace(np.min(dist) / 2000, 2. * np.max(dist) / 1000, 20), label='Sim', color='r', alpha=0.5)
+    plt.hist(dist_kpc_DG, bins=np.linspace(np.min(dist) / 2000, 2. * np.max(dist) / 1000, 20), label='DG', color='b', alpha=0.5, histtype='stepfilled')
+    plt.hist(dist_kpc_GC, bins=np.linspace(np.min(dist) / 2000, 2. * np.max(dist) / 1000, 20), label='GC', color='k', alpha=0.5, lw=2, histtype='step')
+    plt.legend()
     plt.xlabel("Distance (kpc)")
     plt.ylabel("N objects")
+    plt.yscale('log')
+    plt.savefig(output_plots + '/hist_dist.png')
     plt.show()
-    plt.hist(ang_size, bins=50)
+    plt.close()
+    
+    plt.hist(ang_size, bins=np.linspace(np.min(ang_size) / 2, 2. * np.max(ang_size), 20), label='Sim', color='r', alpha=0.5)
+    plt.hist(ang_size_DG, bins=np.linspace(np.min(ang_size) / 2, 2. * np.max(ang_size), 20), label='DG', color='b', alpha=0.5, histtype='stepfilled')
+    plt.hist(rhl_arcmin_GC, bins=np.linspace(np.min(ang_size) / 2, 2. * np.max(ang_size), 20), label='GC', color='k', alpha=0.5, lw=2, histtype='step')
+    plt.legend()
+    plt.yscale('log')
     plt.xlabel("Half-light radii (arcmin)")
     plt.ylabel("N objects")
+    plt.savefig(output_plots + '/hist_ang_size.png')
     plt.show()
-    plt.scatter(dist / 1000, ang_size)
+    plt.close()
+
+    plt.scatter(dist / 1000, ang_size, label='Sim', color='r')
+    plt.scatter(dist_kpc_DG, ang_size_DG, label='DG', color='b')
+    plt.scatter(dist_kpc_GC, rhl_arcmin_GC, label='GC', color='k')
     plt.xlabel("Distance (kpc)")
     plt.ylabel("Half-light radii (arcmin)")
+    plt.yscale('log')
+    plt.legend()
+    plt.savefig(output_plots + '/rhl_versus_dist.png')
     plt.show()
-
-    plt.scatter(mass, NSTARS)
+    plt.close()
+    
+    plt.scatter(mass, NSTARS, label='Sim', color='r')
     plt.xlabel("MASS(MSun)")
     plt.ylabel("N stars")
+    plt.legend()
+    plt.savefig(output_plots + '/hist_mass.png')
     plt.show()
+    plt.close()
 
-    plt.scatter(mass, MAG_ABS_V)
+    plt.scatter(mass, MAG_ABS_V, label='Sim', color='r')
     plt.xlabel("MASS(MSun)")
     plt.ylabel("MAG_ABS_V")
+    plt.legend()
+    plt.savefig(output_plots + '/mass_abs_mag.png')
     plt.show()
+    plt.close()
 
 
-def plots_ref(
-    FeH_iso,
-    star_clusters_simulated=Path("results/star_clusters_simulated.dat"),
-    output_plots=Path("results"),
+def plots_ref(FeH_iso,
+              output_plots,
+              star_clusters_simulated=Path("results/star_clusters_simulated.dat"), 
 ):
     """Make a few plots about the simulated clusters"""
-    # TODO: Talves separar os plots em funções diferentes.
 
-    catalogs_path = Path("catalogs")
-
-    # Catalogo objects_in_ref.dat
-    obj_ref_filepath = Path(catalogs_path, "objects_in_ref.dat")
-    ra_DG, dec_DG, dist_kpc_obj, Mv_obj, rhl_pc_obj, FeH_DG = np.loadtxt(
-        obj_ref_filepath, usecols=(0, 1, 4, 8, 10, 11), unpack=True
-    )
-
-    # # TODO: Variavel instanciada e não utilizada
-    # name_obj = np.loadtxt(
-    #     "catalogos/objects_in_ref.dat", dtype=str, usecols=(2), unpack=True
-    # )
-
-    #  Catalogo Harris_updated.dat
-    harris_updated_filepath = Path(catalogs_path, "Harris_updated.dat")
-    # 0-Name 1-L 2-B 3-R_gc	4-Fe/H 5-M-M 6-Mv 7-rhl arcmin
-    R_MW_GC, FeH_GC, mM_GC, Mv_GC, rhl_arcmin_GC = np.loadtxt(
-        harris_updated_filepath, usecols=(3, 4, 5, 6, 7), unpack=True
-    )
-    dist_kpc_GC = 10 ** (mM_GC / 5 - 2)
-
+    name_DG, ra_DG, dec_DG, dist_kpc_DG, Mv_DG, rhl_pc_DG, FeH_DG, name_GC, R_MW_GC, FeH_GC, mM_GC, Mv_GC, rhl_pc_GC, dist_kpc_GC, rhl_arcmin_GC = read_real_cat()
+    
     # Star Clusters Simulated
     # TODO: Variaveis instanciadas e não utilizadas
     star_clusters_simulated = Path(star_clusters_simulated)
@@ -316,9 +398,8 @@ def plots_ref(
         unpack=True,
     )
     LOG10_RHL_PC_SIM = np.log10(1.7 * R_EXP)
-    rhl_pc_GC = 1000 * dist_kpc_GC * (rhl_arcmin_GC / (57.3 * 60))
 
-    MW_center_distance_DG_kpc = radec2GCdist(ra_DG, dec_DG, dist_kpc_obj)
+    MW_center_distance_DG_kpc = radec2GCdist(ra_DG, dec_DG, dist_kpc_DG)
 
     fig, axs = plt.subplots(2, 2, figsize=(15, 8))
     axs[0, 0].hist(
@@ -327,14 +408,15 @@ def plots_ref(
         range=(-16, 0.0),
         histtype="stepfilled",
         label="Sim",
-        color="grey",
+        color="r",
         ls="--",
+        alpha=0.5
     )
     axs[0, 0].hist(
-        Mv_obj, bins=20, range=(-16, 0.0), histtype="step", label="DG", color="r"
+        Mv_DG, bins=20, range=(-16, 0.0), histtype="stepfilled", label="DG", color="b", alpha=0.5
     )
     axs[0, 0].hist(
-        Mv_GC, bins=20, range=(-16, 0.0), histtype="step", label="GC", color="b"
+        Mv_GC, bins=20, range=(-16, 0.0), histtype="step", label="GC", color="k"
     )
     axs[0, 0].set_xlabel(r"$M_V$")
     axs[0, 0].set_ylabel("N")
@@ -346,16 +428,17 @@ def plots_ref(
         histtype="stepfilled",
         range=(0, 4.0),
         label="Sim",
-        color="grey",
+        color="r",
         ls="--",
     )
     axs[0, 1].hist(
-        np.log10(rhl_pc_obj),
+        np.log10(rhl_pc_DG),
         bins=20,
-        histtype="step",
+        histtype="stepfilled",
         range=(0, 4.0),
         label="DG",
-        color="r",
+        color="b",
+        alpha=0.5
     )
     axs[0, 1].hist(
         np.log10(rhl_pc_GC),
@@ -363,7 +446,7 @@ def plots_ref(
         histtype="step",
         range=(0, 4.0),
         label="GC",
-        color="b",
+        color="k",
     )
     axs[0, 1].set_xlabel("log10(rhl[pc])")
     axs[0, 1].legend(loc=1)
@@ -374,14 +457,15 @@ def plots_ref(
         range=(0, 400.0),
         histtype="stepfilled",
         label="Sim",
-        color="grey",
+        color="r",
         ls="--",
+        alpha=0.5
     )
     axs[1, 0].hist(
-        dist_kpc_obj, bins=20, range=(0, 400.0), histtype="step", label="DG", color="r"
+        dist_kpc_DG, bins=20, range=(0, 400.0), histtype="stepfilled", label="DG", color="b", alpha=0.5
     )
     axs[1, 0].hist(
-        dist_kpc_GC, bins=20, range=(0, 400.0), histtype="step", label="GC", color="b"
+        dist_kpc_GC, bins=20, range=(0, 400.0), histtype="step", label="GC", color="k"
     )
     axs[1, 0].set_xlabel("Distance (kpc)")
     axs[1, 0].legend(loc=1)
@@ -392,14 +476,15 @@ def plots_ref(
         range=(-3, 1.0),
         histtype="stepfilled",
         label="Sim",
-        color="grey",
+        color="r",
         ls="--",
+        alpha=0.5
     )
     axs[1, 1].hist(
-        FeH_GC, bins=20, range=(-3, 1.0), histtype="step", label="GC", color="r"
+        FeH_DG, bins=20, range=(-3, 1.0), histtype="stepfilled", label="DG", color="b", alpha=0.5
     )
     axs[1, 1].hist(
-        FeH_DG, bins=20, range=(-3, 1.0), histtype="step", label="DG", color="b"
+        FeH_GC, bins=20, range=(-3, 1.0), histtype="step", label="GC", color="k"
     )
     axs[1, 1].set_xlabel("[Fe/H]")
     axs[1, 1].legend(loc=1)
@@ -416,6 +501,7 @@ def plots_ref(
 
     filepath = Path(output_plots, "_01_real_objects.png")
     plt.savefig(filepath)
+    plt.show()
     plt.close()
 
     #  PLOT 2 ----------------
@@ -423,12 +509,12 @@ def plots_ref(
         DIST / 1000,
         np.repeat(FeH_iso, len(DIST)),
         label="Sim",
-        color="grey",
+        color="r",
         marker="x",
         lw=1.0,
     )
-    plt.scatter(MW_center_distance_DG_kpc, FeH_DG, label="DG", color="r")
-    plt.scatter(R_MW_GC, FeH_GC, label="GC", color="b")
+    plt.scatter(MW_center_distance_DG_kpc, FeH_DG, label="DG", color="b")
+    plt.scatter(R_MW_GC, FeH_GC, label="GC", color="k")
     plt.xlabel("Distance to the Galactic center (kpc)")
     plt.ylabel("[Fe/H]")
     plt.ylim([-3.5, 0])
@@ -436,6 +522,7 @@ def plots_ref(
     plt.grid()
     filepath = Path(output_plots, "_02_feh_rgc.png")
     plt.savefig(filepath)
+    plt.show()
     plt.close()
 
     # TODO: Variavel instanciada e não utilizada
@@ -443,9 +530,9 @@ def plots_ref(
     m_v = np.linspace(1, -14, 10, endpoint=True)
 
     #  PLOT 3 ----------------
-    plt.scatter(1.7 * R_EXP, MAG_ABS_V, marker="s", color="grey", label="Sim")
-    plt.scatter(rhl_pc_obj, Mv_obj, marker="^", color="r", label="DG")
-    plt.scatter(rhl_pc_GC, Mv_GC, marker="x", color="b", label="GC")
+    plt.scatter(1.7 * R_EXP, MAG_ABS_V, marker="s", color="r", label="Sim")
+    plt.scatter(rhl_pc_DG, Mv_DG, marker="x", color="b", label="DG")
+    plt.scatter(rhl_pc_GC, Mv_GC, marker="x", color="k", label="GC")
     plt.plot(
         np.logspace(np.log10(1.8), np.log10(1800), 10, endpoint=True),
         np.linspace(1, -14, 10, endpoint=True),
@@ -481,9 +568,8 @@ def plots_ref(
 
     filepath = Path(output_plots, "_03_mv_rh.png")
     plt.savefig(filepath)
-    plt.close()
-
     plt.show()
+    plt.close()
 
 
 def plot_err(
@@ -524,5 +610,5 @@ def plot_err(
 
     filepath = Path(output_plots, "simulated_stars_err.png")
     plt.savefig(filepath)
-
     plt.show()
+    plt.close()
