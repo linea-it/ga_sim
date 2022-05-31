@@ -430,6 +430,7 @@ def plots_ref(FeH_iso,
         label="Sim",
         color="r",
         ls="--",
+        alpha=0.5
     )
     axs[0, 1].hist(
         np.log10(rhl_pc_DG),
