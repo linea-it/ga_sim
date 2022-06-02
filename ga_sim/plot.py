@@ -184,8 +184,12 @@ def general_plots(star_clusters_simulated, output_dir):
 
     ax3.scatter(MASS, MAG_ABS_V, label='Sim', color='r')
     ax3.scatter(MASS, MAG_ABS_V_CLEAN, label='Sim filt', color='darkred')
+    for i, j in enumerate(MASS):
+        if MAG_ABS_V[i] < 0.0:
+            ax3.plot([MASS[i], MASS[i]],
+                     [MAG_ABS_V[i], MAG_ABS_V_CLEAN[i]], color='darkred', lw=0.2)
     ax3.set_xlabel("mass(Msun)")
-    # ax3.set_ylim([np.max(MAG_ABS_V_CLEAN[MAG_ABS_V < 0.0]) + 0.1, np.min(MAG_ABS_V[MAG_ABS_V < 0.0]) - 0.1])
+    ax3.set_ylim([np.max(MAG_ABS_V_CLEAN[MAG_ABS_V < 0.0]) + 0.1, np.min(MAG_ABS_V[MAG_ABS_V < 0.0]) - 0.1])
     ax3.legend()
     plt.savefig(output_dir + '/hist_MV.png')
     plt.show()
@@ -219,7 +223,7 @@ def plot_ftp(
         title="",
         return_projected_map=True,
     )
-    # plt.clf()
+    plt.clf()
 
     # TODO: Verificar variaveis carregadas e não usadas
     PIX_sim, NSTARS, MAG_ABS_V, RA, DEC, R_EXP, ELL, PA, MASS, DIST = np.loadtxt(
@@ -257,7 +261,7 @@ def plot_ftp(
     axs.set_ylabel("DEC (deg)")
     axs.set_title("Distribution of stars on Footprint Map")
     axs.grid()
-    plt.legend()
+    plt.legend(loc=1)
     plt.savefig(output_dir + '/ftp.png')
     plt.show()
     plt.close()
@@ -288,6 +292,7 @@ def plots_ang_size(
         # TODO: use only cats of filtered stars
         clus_filepath = Path(clus_path, "%s_clus.dat" % int(i))
         plot_filepath = Path(output_plots, "%s_cmd.png" % int(i))
+        plot_filt_filepath = Path(output_plots, "%s_filt_cmd.png" % int(i))
 
         # Evita erro se o arquivo _clus.dat não existir.
         # Pode acontecer se o teste estiver usando uma quantidade pequena de dados.
@@ -339,57 +344,86 @@ def plots_ang_size(
     
     ang_size_DG = 60. * (180. / np.pi) * np.arctan(rhl_pc_DG / (1000. * dist_kpc_DG))
     ang_size = 60 * np.rad2deg(np.arctan(1.7 * r_exp / dist))
-
-    plt.hist(dist / 1000, bins=np.linspace(np.min(dist) / 2000, 2. * np.max(dist) / 1000, 20), label='Sim', color='r', alpha=0.5)
-    plt.hist(dist_kpc_DG, bins=np.linspace(np.min(dist) / 2000, 2. * np.max(dist) / 1000, 20), label='DG', color='b', alpha=0.5, histtype='stepfilled')
-    plt.hist(dist_kpc_GC, bins=np.linspace(np.min(dist) / 2000, 2. * np.max(dist) / 1000, 20), label='GC', color='k', alpha=0.5, lw=2, histtype='step')
-    plt.legend()
-    plt.xlabel("Distance (kpc)")
-    plt.ylabel("N objects")
-    plt.yscale('log')
-    plt.savefig(output_plots + '/hist_dist.png')
-    plt.show()
-    plt.close()
     
-    plt.hist(ang_size, bins=np.linspace(np.min(ang_size) / 2, 2. * np.max(ang_size), 20), label='Sim', color='r', alpha=0.5)
-    plt.hist(ang_size_DG, bins=np.linspace(np.min(ang_size) / 2, 2. * np.max(ang_size), 20), label='DG', color='b', alpha=0.5, histtype='stepfilled')
-    plt.hist(rhl_arcmin_GC, bins=np.linspace(np.min(ang_size) / 2, 2. * np.max(ang_size), 20), label='GC', color='k', alpha=0.5, lw=2, histtype='step')
-    plt.legend()
-    plt.yscale('log')
-    plt.xlabel("Half-light radii (arcmin)")
-    plt.ylabel("N objects")
-    plt.savefig(output_plots + '/hist_ang_size.png')
-    plt.show()
-    plt.close()
+    f, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2, figsize=(22, 20))
 
-    plt.scatter(dist / 1000, ang_size, label='Sim', color='r')
-    plt.scatter(dist_kpc_DG, ang_size_DG, label='DG', color='b')
-    plt.scatter(dist_kpc_GC, rhl_arcmin_GC, label='GC', color='k')
-    plt.xlabel("Distance (kpc)")
-    plt.ylabel("Half-light radii (arcmin)")
-    plt.yscale('log')
-    plt.legend()
-    plt.savefig(output_plots + '/rhl_versus_dist.png')
-    plt.show()
-    plt.close()
+    ax1.hist(dist / 1000, bins=np.linspace(np.min(dist) / 2000, 2. * np.max(dist) / 1000, 20), label='Sim', color='r', alpha=0.5)
+    ax1.hist(dist_kpc_DG, bins=np.linspace(np.min(dist) / 2000, 2. * np.max(dist) / 1000, 20), label='DG', color='b', alpha=0.5, histtype='stepfilled')
+    ax1.hist(dist_kpc_GC, bins=np.linspace(np.min(dist) / 2000, 2. * np.max(dist) / 1000, 20), label='GC', color='k', alpha=0.5, lw=2, histtype='step')
+    ax1.legend()
+    ax1.set_xlabel("Distance (kpc)")
+    ax1.set_ylabel("N objects")
+    ax1.set_yscale('log')
+    #plt.savefig(output_plots + '/hist_dist_log.png')
+    #plt.show()
+    #plt.close()
+
+    ax2.hist(dist / 1000, bins=np.linspace(np.min(dist) / 2000, 2. * np.max(dist) / 1000, 20), label='Sim', color='r', alpha=0.5)
+    ax2.hist(dist_kpc_DG, bins=np.linspace(np.min(dist) / 2000, 2. * np.max(dist) / 1000, 20), label='DG', color='b', alpha=0.5, histtype='stepfilled')
+    ax2.hist(dist_kpc_GC, bins=np.linspace(np.min(dist) / 2000, 2. * np.max(dist) / 1000, 20), label='GC', color='k', alpha=0.5, lw=2, histtype='step')
+    ax2.legend()
+    ax2.set_xlabel("Distance (kpc)")
+    ax2.set_ylabel("N objects")
+    #plt.savefig(output_plots + '/hist_dist.png')
+    #plt.show()
+    #plt.close()
+
+    ax3.hist(ang_size, bins=np.linspace(np.min(ang_size) / 2, 2. * np.max(ang_size), 20), label='Sim', color='r', alpha=0.5)
+    ax3.hist(ang_size_DG, bins=np.linspace(np.min(ang_size) / 2, 2. * np.max(ang_size), 20), label='DG', color='b', alpha=0.5, histtype='stepfilled')
+    ax3.hist(rhl_arcmin_GC, bins=np.linspace(np.min(ang_size) / 2, 2. * np.max(ang_size), 20), label='GC', color='k', alpha=0.5, lw=2, histtype='step')
+    ax3.legend()
+    ax3.set_yscale('log')
+    ax3.set_xlabel("Half-light radii (arcmin)")
+    ax3.set_ylabel("N objects")
+    # plt.savefig(output_plots + '/hist_ang_size_log.png')
+    # plt.show()
+    # plt.close()
+
+    ax4.hist(ang_size, bins=np.linspace(np.min(ang_size) / 2, 2. * np.max(ang_size), 20), label='Sim', color='r', alpha=0.5)
+    ax4.hist(ang_size_DG, bins=np.linspace(np.min(ang_size) / 2, 2. * np.max(ang_size), 20), label='DG', color='b', alpha=0.5, histtype='stepfilled')
+    ax4.hist(rhl_arcmin_GC, bins=np.linspace(np.min(ang_size) / 2, 2. * np.max(ang_size), 20), label='GC', color='k', alpha=0.5, lw=2, histtype='step')
+    ax4.legend()
+    ax4.set_xlabel("Half-light radii (arcmin)")
+    ax4.set_ylabel("N objects")
+    #plt.savefig(output_plots + '/hist_ang_size.png')
+    #plt.show()
+    #plt.close()
+
+    ax5.scatter(dist / 1000, ang_size, label='Sim', color='r')
+    ax5.scatter(dist_kpc_DG, ang_size_DG, label='DG', color='b')
+    ax5.scatter(dist_kpc_GC, rhl_arcmin_GC, label='GC', color='k')
+    ax5.set_xlabel("Distance (kpc)")
+    ax5.set_ylabel("Half-light radii (arcmin)")
+    ax5.set_yscale('log')
+    ax5.legend()
+    # plt.savefig(output_plots + '/rhl_versus_dist.png')
+    # plt.show()
+    # plt.close()
     
-    plt.scatter(mass, NSTARS, label='Sim', color='r')
-    plt.scatter(mass, NSTARS_CLEAN, label='Sim filt', color='darkred')
-    plt.xlabel("MASS(MSun)")
-    plt.ylabel("N stars")
-    plt.legend()
-    plt.savefig(output_plots + '/hist_mass.png')
+    for i, j in enumerate(mass):
+        if MAG_ABS_V[i] < 0.0:
+            ax6.plot([mass[i], mass[i]],
+                     [NSTARS[i], NSTARS_CLEAN[i]], color='darkred', lw=0.2)
+    ax6.scatter(mass, NSTARS, label='Sim', color='r')
+    ax6.scatter(mass, NSTARS_CLEAN, label='Sim filt', color='darkred')
+    ax6.set_xlabel("MASS(MSun)")
+    ax6.set_ylabel("N stars")
+    ax6.legend()
+    # plt.savefig(output_plots + '/hist_mass.png')
     plt.show()
-    plt.close()
+    # plt.close()
 
+    '''
     plt.scatter(mass, MAG_ABS_V, label='Sim', color='r')
     plt.scatter(mass, MAG_ABS_V_CLEAN, label='Sim filt', color='darkred')
     plt.xlabel("MASS(MSun)")
     plt.ylabel("MAG_ABS_V")
+    plt.set_ylim([np.max(MAG_ABS_V_CLEAN[MAG_ABS_V < 0.0]) + 0.1, np.min(MAG_ABS_V[MAG_ABS_V < 0.0]) - 0.1])
     plt.legend()
     plt.savefig(output_plots + '/mass_abs_mag.png')
     plt.show()
     plt.close()
+    '''
 
 
 def plots_ref(FeH_iso,

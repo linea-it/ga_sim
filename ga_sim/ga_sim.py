@@ -852,7 +852,7 @@ def faker_bin(total_bin, IMF_author, file_in, dist):
             count += 1
 
     # mag1 mag1err unc1 mag2 mag2err unc2
-    binaries = np.zeros((total_bin, 2))
+    binaries = np.zeros((total_bin, 3))
 
     for i in range(total_bin):
         for k in range(len(mass) - 1):  # abre as linhas do arquivo em massa
@@ -864,7 +864,8 @@ def faker_bin(total_bin, IMF_author, file_in, dist):
                 )  # intervalo entre zero e um
                 binaries[i, 0] = mag1[k] - (mag1[k] - mag1[k + 1]) * intervalo
                 binaries[i, 1] = mag2[k] - (mag2[k] - mag2[k + 1]) * intervalo
-    return binaries[:, 0], binaries[:, 1]
+                binaries[i, 2] = massa_calculada[i]
+    return binaries[:, 0], binaries[:, 1], binaries[:, 2]
 
 
 def unc(mag, mag_table, err_table):
@@ -1021,8 +1022,8 @@ def faker(
             # massa calculada eh a massa de cada estrela
             count += 1
 
-    # 0-RA, 1-DEC, 2-mag1, 3-mag1err, 4-unc1, 5-mag2, 6-mag2err, 7-unc2
-    star = np.zeros((N_stars_cmd, 8))
+    # 0-RA, 1-DEC, 2-mag1, 3-mag1err, 4-unc1, 5-mag2, 6-mag2err, 7-unc2, 8-mass
+    star = np.zeros((N_stars_cmd, 9))
 
     for i in range(N_stars_cmd):
         for k in range(len(mass) - 1):  # abre as linhas do arquivo em massa
@@ -1034,11 +1035,12 @@ def faker(
                 )  # intervalo entre zero e um
                 star[i, 2] = mag1[k] - (mag1[k] - mag1[k + 1]) * intervalo
                 star[i, 5] = mag2[k] - (mag2[k] - mag2[k + 1]) * intervalo
+                star[i, 8] = massa_calculada[i]
 
     # apply binarity
     # definition of binarity: fb = N_stars_in_binaries / N_total
     N_stars_bin = int(N_stars_cmd / ((2.0 / frac_bin) - 1))
-    mag1_bin, mag2_bin = faker_bin(N_stars_bin, "Kroupa", file_iso, dist)
+    mag1_bin, mag2_bin, mass_bin = faker_bin(N_stars_bin, "Kroupa", file_iso, dist)
 
     j = np.random.randint(N_stars_cmd, size=N_stars_bin)
     k = np.random.randint(N_stars_bin, size=N_stars_bin)
@@ -1107,7 +1109,8 @@ def faker(
                     star[ii, 5] + star[ii, 6],
                     star[ii, 7],
                     star[ii, 3],
-                    star[ii, 4],
+                    star[ii, 6],
+                    star[ii, 8],
                     file=out_file,
                 )
 
