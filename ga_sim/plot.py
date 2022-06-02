@@ -133,38 +133,59 @@ def general_plots(star_clusters_simulated, output_dir):
     
     name_DG, ra_DG, dec_DG, dist_kpc_DG, Mv_DG, rhl_pc_DG, FeH_DG, name_GC, R_MW_GC, FeH_GC, mM_GC, Mv_GC, rhl_pc_GC, dist_kpc_GC, rhl_arcmin_GC = read_real_cat()
 
-    PIX_sim, NSTARS, MAG_ABS_V, RA, DEC, R_EXP, ELL, PA, MASS, DIST = np.loadtxt(
+    PIX_sim, NSTARS, MAG_ABS_V, NSTARS_CLEAN, MAG_ABS_V_CLEAN, RA, DEC, R_EXP, ELL, PA, MASS, DIST = np.loadtxt(
         star_clusters_simulated,
-        usecols=(0, 1, 2, 6, 7, 8, 9, 10, 11, 12),
+        usecols=(0, 1, 2, 4, 5, 9, 10, 11, 12, 13, 14, 15),
         unpack=True,
     )
-    f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 5))
-    ax1.scatter(np.log10(1.7 * R_EXP[MAG_ABS_V < 0.0]), MAG_ABS_V[MAG_ABS_V < 0.0], color='r', label='Sim')
-    ax1.scatter(np.log10(rhl_pc_DG), Mv_DG, color='b', marker='x', label='DG')
-    ax1.scatter(np.log10(rhl_pc_GC), Mv_GC, color='k', marker='x', label='GC')
-    #for i, j in enumerate(rhl_pc_DG):
-    #    ax1.annotate(name_DG[i], (np.log10(rhl_pc_DG[i]), Mv_DG[i]))
-    #for i, j in enumerate(rhl_pc_GC):
-    #    ax1.annotate(name_GC[i], (np.log10(rhl_pc_GC[i]), Mv_GC[i]))
+    f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(22, 5))
+    ax1.scatter(1.7 * R_EXP[MAG_ABS_V < 0.0], MAG_ABS_V[MAG_ABS_V < 0.0], color='r', label='Sim')
+    ax1.scatter(1.7 * R_EXP[MAG_ABS_V < 0.0], MAG_ABS_V_CLEAN[MAG_ABS_V < 0.0], color='darkred', label='Sim filt')
+    ax1.scatter(rhl_pc_DG, Mv_DG, color='b', marker='x', label='DG')
+    ax1.scatter(rhl_pc_GC, Mv_GC, color='k', marker='x', label='GC')
+    for i, j in enumerate(R_EXP):
+        if MAG_ABS_V[i] < 0.0:
+            ax1.plot([1.7 * R_EXP[i], 1.7 * R_EXP[i]],
+                     [MAG_ABS_V[i], MAG_ABS_V_CLEAN[i]], color='darkred', lw=0.1)
+    for i, j in enumerate(rhl_pc_DG):
+        ax1.annotate(name_DG[i], (np.log10(rhl_pc_DG[i]), Mv_DG[i]))
+    for i, j in enumerate(rhl_pc_GC):
+        ax1.annotate(name_GC[i], (np.log10(rhl_pc_GC[i]), Mv_GC[i]))
     ax1.set_ylabel("M(V)")
-    ax1.set_xlabel("log10(half-light radius (pc))")
-    ax1.set_xlim([np.min(np.log10(1.7 * R_EXP[MAG_ABS_V < 0.0])) - 0.1, np.max(np.log10(1.7 * R_EXP[MAG_ABS_V < 0.0])) + 0.1])
-    ax1.set_ylim([np.min(MAG_ABS_V[MAG_ABS_V < 0.0]) - 0.1, np.max(MAG_ABS_V[MAG_ABS_V < 0.0]) + 0.1])
+    ax1.set_xlabel(r"$r_{1/2}$ (pc))")
+    ax1.set_xlim([np.min(1.7 * R_EXP[MAG_ABS_V < 0.0]) - 0.1, np.max(1.7 * R_EXP[MAG_ABS_V < 0.0]) + 0.1])
+    ax1.set_ylim([np.max(MAG_ABS_V_CLEAN[MAG_ABS_V < 0.0]) + 0.1, np.min(MAG_ABS_V[MAG_ABS_V < 0.0]) - 0.1])
+    ax1.set_xscale("log")
     ax1.legend()
 
-    ax2.scatter(np.log10(1.7 * R_EXP[MAG_ABS_V < 0.0]), MAG_ABS_V[MAG_ABS_V < 0.0], color='r', label='Sim')
-    ax2.scatter(np.log10(rhl_pc_DG), Mv_DG, color='b', marker='x', label='DG')
-    ax2.scatter(np.log10(rhl_pc_GC), Mv_GC, color='k', marker='x', label='GC')
-    for i, j in enumerate(rhl_pc_DG):
-        ax2.annotate(name_DG[i], (np.log10(rhl_pc_DG[i]), Mv_DG[i]))
-    for i, j in enumerate(rhl_pc_GC):
-        ax2.annotate(name_GC[i], (np.log10(rhl_pc_GC[i]), Mv_GC[i]))
-    ax2.set_xlabel("log10(half-light radius (pc))")
+    ax2.scatter(1.7 * R_EXP[MAG_ABS_V < 0.0], MAG_ABS_V[MAG_ABS_V < 0.0], color='r', label='Sim')
+    ax2.scatter(1.7 * R_EXP[MAG_ABS_V < 0.0], MAG_ABS_V_CLEAN[MAG_ABS_V < 0.0], color='darkred', label='Sim filt')
+    ax2.scatter(rhl_pc_DG, Mv_DG, color='b', marker='x', label='DG')
+    ax2.scatter(rhl_pc_GC, Mv_GC, color='k', marker='x', label='GC')
+    #for i, j in enumerate(rhl_pc_DG):
+    #    ax2.annotate(name_DG[i], (np.log10(rhl_pc_DG[i]), Mv_DG[i]))
+    #for i, j in enumerate(rhl_pc_GC):
+    #    ax2.annotate(name_GC[i], (np.log10(rhl_pc_GC[i]), Mv_GC[i]))
+    ax2.set_xlabel(r"$r_{1/2}$ (pc))")
     ax2.legend()
-    
+    ax2.plot(np.logspace(np.log10(1.8), np.log10(1800), 10, endpoint=True),
+        np.linspace(1, -14, 10, endpoint=True), color="b", ls=":")
+    ax2.plot(np.logspace(np.log10(4.2), np.log10(4200), 10, endpoint=True),
+        np.linspace(1, -14, 10, endpoint=True), color="b", ls=":")
+    ax2.plot(np.logspace(np.log10(11), np.log10(11000), 10, endpoint=True),
+        np.linspace(1, -14, 10, endpoint=True), color="b", ls=":")
+    ax2.plot(np.logspace(np.log10(28), np.log10(28000), 10, endpoint=True),
+        np.linspace(1, -14, 10, endpoint=True), color="b", ls=":")
+    ax2.text(300, -7.9, r"$\mu_V=27\ mag/arcsec$", rotation=45)
+    ax2.text(400, -4.2, r"$\mu_V=31\ mag/arcsec$", rotation=45)
+    ax2.set_xscale("log")
+    ax2.set_xlim([0.4, 4000])
+    ax2.set_ylim([1, -14])
+
     ax3.scatter(MASS, MAG_ABS_V, label='Sim', color='r')
+    ax3.scatter(MASS, MAG_ABS_V_CLEAN, label='Sim filt', color='darkred')
     ax3.set_xlabel("mass(Msun)")
-    ax3.set_ylim([np.min(MAG_ABS_V[MAG_ABS_V < 0.0]) - 0.1, np.max(MAG_ABS_V[MAG_ABS_V < 0.0]) + 0.1])
+    # ax3.set_ylim([np.max(MAG_ABS_V_CLEAN[MAG_ABS_V < 0.0]) + 0.1, np.min(MAG_ABS_V[MAG_ABS_V < 0.0]) - 0.1])
     ax3.legend()
     plt.savefig(output_dir + '/hist_MV.png')
     plt.show()
@@ -203,7 +224,7 @@ def plot_ftp(
     # TODO: Verificar variaveis carregadas e não usadas
     PIX_sim, NSTARS, MAG_ABS_V, RA, DEC, R_EXP, ELL, PA, MASS, DIST = np.loadtxt(
         star_clusters_simulated,
-        usecols=(0, 1, 2, 6, 7, 8, 9, 10, 11, 12),
+        usecols=(0, 1, 2, 9, 10, 11, 12, 13, 14, 15),
         unpack=True,
     )
     for i in range(len(RA)):
@@ -258,25 +279,13 @@ def plots_ang_size(
     cmap.set_bad("black")
 
     # TODO: Variaveis Instanciadas e não usadas
-    (
-        hp_sample_un,
-        NSTARS,
-        MAG_ABS_V,
-        RA_pix,
-        DEC_pix,
-        r_exp,
-        ell,
-        pa,
-        mass,
-        dist,
-    ) = np.loadtxt(
-        star_clusters_simulated,
-        usecols=(0, 1, 2, 6, 7, 8, 9, 10, 11, 12),
-        unpack=True,
+    hp_sample_un, NSTARS, MAG_ABS_V, NSTARS_CLEAN, MAG_ABS_V_CLEAN, RA_pix, DEC_pix, r_exp, ell, pa, mass, dist = np.loadtxt(
+        star_clusters_simulated, usecols=(0, 1, 2, 4, 5, 9, 10, 11, 12, 13, 14, 15), unpack=True
     )
 
     for i in hp_sample_un:
 
+        # TODO: use only cats of filtered stars
         clus_filepath = Path(clus_path, "%s_clus.dat" % int(i))
         plot_filepath = Path(output_plots, "%s_cmd.png" % int(i))
 
@@ -365,6 +374,7 @@ def plots_ang_size(
     plt.close()
     
     plt.scatter(mass, NSTARS, label='Sim', color='r')
+    plt.scatter(mass, NSTARS_CLEAN, label='Sim filt', color='darkred')
     plt.xlabel("MASS(MSun)")
     plt.ylabel("N stars")
     plt.legend()
@@ -373,6 +383,7 @@ def plots_ang_size(
     plt.close()
 
     plt.scatter(mass, MAG_ABS_V, label='Sim', color='r')
+    plt.scatter(mass, MAG_ABS_V_CLEAN, label='Sim filt', color='darkred')
     plt.xlabel("MASS(MSun)")
     plt.ylabel("MAG_ABS_V")
     plt.legend()
@@ -392,11 +403,12 @@ def plots_ref(FeH_iso,
     # Star Clusters Simulated
     # TODO: Variaveis instanciadas e não utilizadas
     star_clusters_simulated = Path(star_clusters_simulated)
-    PIX_sim, NSTARS, MAG_ABS_V, RA, DEC, R_EXP, ELL, PA, MASS, DIST = np.loadtxt(
-        star_clusters_simulated,
-        usecols=(0, 1, 2, 6, 7, 8, 9, 10, 11, 12),
-        unpack=True,
-    )
+
+    PIX_sim, NSTARS, MAG_ABS_V, NSTARS_CLEAN, MAG_ABS_V_CLEAN, RA, DEC, R_EXP, ELL, PA, MASS, DIST = np.loadtxt(
+    star_clusters_simulated,
+    usecols=(0, 1, 2, 4, 5, 9, 10, 11, 12, 13, 14, 15),
+    unpack=True)
+
     LOG10_RHL_PC_SIM = np.log10(1.7 * R_EXP)
 
     MW_center_distance_DG_kpc = radec2GCdist(ra_DG, dec_DG, dist_kpc_DG)
@@ -412,6 +424,17 @@ def plots_ref(FeH_iso,
         ls="--",
         alpha=0.5
     )
+    axs[0, 0].hist(
+        MAG_ABS_V_CLEAN,
+        bins=20,
+        range=(-16, 0.0),
+        histtype="stepfilled",
+        label="Sim filt",
+        color="darkred",
+        ls="--",
+        alpha=0.5
+    )
+    
     axs[0, 0].hist(
         Mv_DG, bins=20, range=(-16, 0.0), histtype="stepfilled", label="DG", color="b", alpha=0.5
     )
@@ -526,12 +549,13 @@ def plots_ref(FeH_iso,
     plt.show()
     plt.close()
 
-    # TODO: Variavel instanciada e não utilizada
-    rhl = np.logspace(np.log10(1.8), np.log10(1800), 10, endpoint=True)
-    m_v = np.linspace(1, -14, 10, endpoint=True)
+    # rhl = np.logspace(np.log10(1.8), np.log10(1800), 10, endpoint=True)
+    # m_v = np.linspace(1, -14, 10, endpoint=True)
 
+    '''
     #  PLOT 3 ----------------
     plt.scatter(1.7 * R_EXP, MAG_ABS_V, marker="s", color="r", label="Sim")
+    plt.scatter(1.7 * R_EXP, MAG_ABS_V_CLEAN, marker="s", color="darkred", label="Sim filt")
     plt.scatter(rhl_pc_DG, Mv_DG, marker="x", color="b", label="DG")
     plt.scatter(rhl_pc_GC, Mv_GC, marker="x", color="k", label="GC")
     plt.plot(
@@ -571,7 +595,7 @@ def plots_ref(FeH_iso,
     plt.savefig(filepath)
     plt.show()
     plt.close()
-
+    '''
 
 def plot_err(
     mockcat=Path("results/des_mockcat_for_detection.fits"), output_plots=Path("results")

@@ -304,7 +304,9 @@ def clus_file_results(results_path, out_file, sim_clus_feat, objects_filepath):
         Name of file with n_stars and absolute magnitude.
     """
     star_clusters_simulated = Path(results_path, out_file)
-    os.system('join --nocheck-order %s %s > %s' %
+    with open(star_clusters_simulated, 'w') as fff:
+        print('#0-HPX64 1-N 2-MV 3-SNR 4-N_f 5-MV_f 6-SNR_f 7-L 8-B 9-ra 10-dec 11-r_exp 12-ell 13-pa 14-mass 15-dist', file=fff)
+    os.system('join --nocheck-order %s %s >> %s' %
               (sim_clus_feat, objects_filepath, star_clusters_simulated))
 
 
@@ -1291,7 +1293,7 @@ def snr_estimate(
     ra_center, dec_center = hp.pix2ang(nside1, PIX_sim, nest=True, lonlat=True)
     # loading data from isochronal mask
     gr_mask, g_mask, kind_mask = np.loadtxt(
-        "gr_g_model_D0.asc", usecols=(0, 1, 2), unpack=True
+        "sample_data/gr_g_model_D0.asc", usecols=(0, 1, 2), unpack=True
     )
     g_mask += mM_
 
@@ -1301,8 +1303,8 @@ def snr_estimate(
     # e de release a release. Talvez fazer pastas com o nome do survey e colocar
     # eles apenas como mag1_err e mag2_err fosse melhor. ou informar no set de
     # parametros.
-    _g, _gerr = np.loadtxt("des_y6_g_gerr.asc", usecols=(0, 1), unpack=True)
-    _r, _rerr = np.loadtxt("des_y6_r_rerr.asc", usecols=(0, 1), unpack=True)
+    _g, _gerr = np.loadtxt("sample_data/errors_Y6.dat", usecols=(0, 1), unpack=True)
+    _r, _rerr = np.loadtxt("sample_data/errors_Y6.dat", usecols=(0, 2), unpack=True)
 
     for i in range(len(gr_mask)):
         err_ = np.sqrt(
@@ -1338,7 +1340,7 @@ def snr_estimate(
 
 
 def write_sim_clus_features(
-    mockcat, hp_sample_un, nside_ini, mM, output_path=Path("results")
+    mockcat, mockcat_clean, hp_sample_un, nside_ini, mM, output_path=Path("results")
 ):
     """
     Write a few features of the clusters in a file called 'N_stars,dat'.
@@ -1347,6 +1349,9 @@ def write_sim_clus_features(
     - star counts (len(RA[cond_clus])),
     - absolute magnitude in V band (M_abs_V), and
     - signal-to-noise ratio (SNR).
+    - star counts in the clean catalog (removing stars too close to each other),
+    - absolute magnitude in V band in the clean catalog, and
+    - signal-to-noise ratio in the clean catalog (SNR_clean).
     Only global parameters are needed (see its description in the first cells).
     The file must be written after the simulation because the absolute
     magnitude of the cluster and the number of stars are estimated after
@@ -1356,7 +1361,6 @@ def write_sim_clus_features(
     within an IMF).
     """
 
-    # hdu = fits.open(survey + "_mockcat_for_detection.fits", memmap=True)
     hdu = fits.open(mockcat, memmap=True)
     GC = hdu[1].data.field("GC")
     RA = hdu[1].data.field("ra")
@@ -1365,6 +1369,14 @@ def write_sim_clus_features(
     MAG_R = hdu[1].data.field("mag_r_with_err")
     HPX64 = hdu[1].data.field("HPX64")
 
+    hdu2 = fits.open(mockcat_clean, memmap=True)
+    GC_clean = hdu2[1].data.field("GC")
+    RA_clean = hdu2[1].data.field("ra")
+    DEC_clean = hdu2[1].data.field("dec")
+    MAG_G_clean = hdu2[1].data.field("mag_g_with_err")
+    MAG_R_clean = hdu2[1].data.field("mag_r_with_err")
+    HPX64_clean = hdu2[1].data.field("HPX64")
+
     filepath = Path(output_path, "n_stars.dat")
 
     with open(filepath, "w") as out_file:
@@ -1372,6 +1384,9 @@ def write_sim_clus_features(
             # try:
             cond = HPX64 == hp_sample_un[j]
             RA__, DEC__, MAGG__, MAGR__ = RA[cond], DEC[cond], MAG_G[cond], MAG_R[cond]
+            cond_clean = HPX64_clean == hp_sample_un[j]
+            RA__clean, DEC__clean, MAGG__clean, MAGR__clean = RA_clean[cond_clean], DEC_clean[cond_clean], MAG_G_clean[cond_clean], MAG_R_clean[cond_clean]
+
             # plt.scatter(RA__, DEC__)
             # plt.show()
             SNR = snr_estimate(
@@ -1384,11 +1399,22 @@ def write_sim_clus_features(
                 mM[j],
                 2.0 / 60,
                 10.0 / 60,
-                25.0 / 60,
-            )
+                25.0 / 60)
+            SNR_clean = snr_estimate(
+                RA__clean,
+                DEC__clean,
+                MAGG__clean,
+                MAGG__clean - MAGR__clean,
+                hp_sample_un[j],
+                nside_ini,
+                mM[j],
+                2.0 / 60,
+                10.0 / 60,
+                25.0 / 60)
 
             cond_clus = (cond) & (GC == 1)
-            # TODO: Variaveis declaradas e não usadas.
+            cond_clus_clean = (cond_clean) & (GC_clean == 1)
+
             MAGG_clus, MAGR_clus = (
                 MAG_G[cond_clus],
                 MAG_R[cond_clus],
@@ -1401,11 +1427,21 @@ def write_sim_clus_features(
                 M_abs_g - 0.58 * (M_abs_g - M_abs_r) - 0.01
             )  # in V band following Jester 2005
 
+            MAGG_clus_clean, MAGR_clus_clean = (
+                MAG_G_clean[cond_clus_clean],
+                MAG_R_clean[cond_clus_clean],
+            )
+            flux_g_clean = 10 ** (-0.4 * MAGG_clus_clean)
+            flux_r_clean = 10 ** (-0.4 * MAGR_clus_clean)
+            M_abs_g_clean = -2.5 * np.log10(np.sum(flux_g_clean)) - mM[j]
+            M_abs_r_clean = -2.5 * np.log10(np.sum(flux_r_clean)) - mM[j]
+            M_abs_V_clean = M_abs_g_clean - 0.58 * (M_abs_g_clean - M_abs_r_clean) - 0.01
+
             print(
-                "{:d} {:d} {:.2f} {:.2f}".format(
-                    hp_sample_un[j], len(RA[cond_clus]), M_abs_V, SNR
-                ),
-                file=out_file,
+                "{:d} {:d} {:.2f} {:.2f} {:d} {:.2f} {:.2f}".format(
+                    hp_sample_un[j], len(RA[cond_clus]), M_abs_V, SNR,
+                    len(RA_clean[cond_clus_clean]), M_abs_V_clean, SNR_clean
+                ), file=out_file,
             )
     return filepath
 
