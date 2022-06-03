@@ -571,6 +571,8 @@ def dist_ang(ra1, dec1, ra_ref, dec_ref):
 def download_iso(version, phot_system, Z, age, av_ext, out_file):
     """Submit a request of an isochrone from PADOVA schema, download the file
     requested and uses as an input file to the stellar population of clusters.
+    Good reference to Fe/H and M/H and Z:
+    https://www.aanda.org/articles/aa/full_html/2014/03/aa20956-12/aa20956-12.html
 
     Parameters
     ----------
@@ -596,7 +598,7 @@ def download_iso(version, phot_system, Z, age, av_ext, out_file):
     if phot_system == 'des':
         phot_system = 'decam'
     try:
-        os.system(("wget -o lixo -Otmp --post-data='submit_form=Submit&cmd_version={}&photsys_file=tab_mag_odfnew/tab_mag_{}.dat&photsys_version=YBC&output_kind=0&output_evstage=1&isoc_isagelog=0&isoc_agelow={:.2e}&isoc_ageupp={:.2e}&isod_dage=0&isoc_ismetlog=0&isoc_zlow={:.3f}&isoc_zupp={:.3f}&isod_dz=0&extinction_av={:.3f}&{}' {}/cgi-bin/cmd_{}".format(
+        os.system(("wget -o lixo -Otmp --post-data='submit_form=Submit&cmd_version={}&photsys_file=tab_mag_odfnew/tab_mag_{}.dat&photsys_version=YBC&output_kind=0&output_evstage=1&isoc_isagelog=0&isoc_agelow={:.2e}&isoc_ageupp={:.2e}&isod_dage=0&isoc_ismetlog=0&isoc_zlow={:.6f}&isoc_zupp={:.6f}&isod_dz=0&extinction_av={:.3f}&{}' {}/cgi-bin/cmd_{}".format(
             version, phot_system, age, age, Z, Z, av_ext, main_pars, webserver, version)).replace('e+', 'e'))
     except:
         print("No communication with {}".format(webserver))
