@@ -148,9 +148,9 @@ def general_plots(star_clusters_simulated, output_dir):
             ax1.plot([1.7 * R_EXP[i], 1.7 * R_EXP[i]],
                      [MAG_ABS_V[i], MAG_ABS_V_CLEAN[i]], color='darkred', lw=0.1)
     for i, j in enumerate(rhl_pc_DG):
-        ax1.annotate(name_DG[i], (np.log10(rhl_pc_DG[i]), Mv_DG[i]))
+        ax1.annotate(name_DG[i], (rhl_pc_DG[i], Mv_DG[i]))
     for i, j in enumerate(rhl_pc_GC):
-        ax1.annotate(name_GC[i], (np.log10(rhl_pc_GC[i]), Mv_GC[i]))
+        ax1.annotate(name_GC[i], (rhl_pc_GC[i], Mv_GC[i]))
     ax1.set_ylabel("M(V)")
     ax1.set_xlabel(r"$r_{1/2}$ (pc))")
     ax1.set_xlim([np.min(1.7 * R_EXP[MAG_ABS_V < 0.0]) - 0.1, np.max(1.7 * R_EXP[MAG_ABS_V < 0.0]) + 0.1])
@@ -253,9 +253,9 @@ def plot_ftp(
         extent=(ra_max, ra_min, dec_min, dec_max),
         interpolation="none",
     )
-    axs.scatter(RA, DEC, s=20, c="k", marker="s", label="Simulated clusters")
-    axs.scatter(RA_star, DEC_star, s=0.1, c="k", marker="o", label="Simulated stars")
-    axs.set_xlim([ra_min, ra_max])
+    axs.scatter(RA, DEC, s=0.01, c="k", marker="s", label="Simulated clusters")
+    axs.scatter(RA_star, DEC_star, s=0.01, c="k", marker="o", label="Simulated stars")
+    axs.set_xlim([ra_max, ra_min])
     axs.set_ylim([dec_min, dec_max])
     axs.set_xlabel("RA (deg)")
     axs.set_ylabel("DEC (deg)")
@@ -452,7 +452,7 @@ def plots_ref(FeH_iso,
         MAG_ABS_V,
         bins=20,
         range=(-16, 0.0),
-        histtype="stepfilled",
+        histtype="step",
         label="Sim",
         color="r",
         ls="--",

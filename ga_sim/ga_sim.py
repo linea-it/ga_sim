@@ -443,7 +443,7 @@ def gen_clus_file(ra_min, ra_max, dec_min, dec_max, nside_ini, border_extract,
     return RA_pix, DEC_pix, r_exp, ell, pa, dist, mass, mM, hp_sample_un
 
 
-def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax, outfile, AG_AV, AR_AV, ngp, sgp, results_path):
+def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax, outfile, AG_AV, AR_AV, ngp, sgp, results_path, hpx_ftp, nside3, nside_ftp):
     """Read catalog from LIneA data base.
 
     Parameters
@@ -524,9 +524,15 @@ def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax
     MAG_R = MAG_R[cond]
     MAGERR_G = MAGERR_G[cond]
     MAGERR_R = MAGERR_R[cond]
+    
+    hdu2 = fits.open(hpx_ftp, memmap=True)
+    hpx_ftp_data = hdu2[1].data.field("HP_PIXEL_NEST_4096")
+    hdu2.close()
 
-    col1 = fits.Column(name='RA', format='D', array=RA)
-    col2 = fits.Column(name='DEC', format='D', array=DEC)
+    RA_sort, DEC_sort = d_star_real_cat(hpx_ftp_data, len(RA), nside3, nside_ftp)
+    
+    col1 = fits.Column(name='RA', format='D', array=RA_sort)
+    col2 = fits.Column(name='DEC', format='D', array=DEC_sort)
     col3 = fits.Column(name='MAG_G', format='E', array=MAG_G)
     col4 = fits.Column(name='MAG_R', format='E', array=MAG_R)
     col5 = fits.Column(name='MAGERR_G', format='E', array=MAGERR_G)
@@ -538,7 +544,7 @@ def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax
     des_cat_filepath = Path(results_path, outfile)
     tbhdu.writeto(des_cat_filepath, overwrite=True)
 
-    return RA, DEC, MAG_G, MAGERR_G, MAG_R, MAGERR_R
+    return RA_sort, DEC_sort, MAG_G, MAGERR_G, MAG_R, MAGERR_R
 
 
 def dist_ang(ra1, dec1, ra_ref, dec_ref):
@@ -728,15 +734,23 @@ def d_star_real_cat(hpx_ftp, length, nside3, nside_ftp):
     -------
     ra_mw_stars, dec_mw_stars : lists
         The position of the stars in the catalog (degrees)
-    """
-    f2 = nside3 / nside_ftp
-    A = np.repeat(hpx_ftp, f2**2)
-    a = np.random.choice(np.arange(f2**2), len(hpx_ftp), replace=True)
-    set_pixels_nside3 = A * (f2**2) + a
+    """    
+    f2 = np.int_(nside3 / nside_ftp) ** 2
+    # A = np.repeat(hpx_ftp, f2**2)
+    A = np.random.choice(hpx_ftp, length, replace=True)
+    arr = np.arange(f2)
+    a = np.random.choice(arr, length, replace=True)
+    set_pixels_nside3 = np.int_(A) * f2 + a
     hpx_star = np.random.choice(set_pixels_nside3, length, replace=False)
     np.random.shuffle(hpx_star)
+    
     ra_mw_stars, dec_mw_stars = hp.pix2ang(
         nside3, hpx_star, nest=True, lonlat=True)
+    
+    import matplotlib.pyplot as plt
+    plt.scatter(ra_mw_stars, dec_mw_stars, s=0.001)
+    plt.show()
+
     return ra_mw_stars, dec_mw_stars
 
 
