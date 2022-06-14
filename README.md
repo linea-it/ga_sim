@@ -94,6 +94,7 @@ conda install -c conda-forge tqdm
 conda install jupyterlab
 conda install ipykernel
 pip install numpy
+pip install tabulate
 pip install astropy
 pip install healpy
 pip install --user parsl
