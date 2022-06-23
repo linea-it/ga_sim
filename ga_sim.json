@@ -32,6 +32,7 @@
     "final_cat": "results/cat_clean.fits",
     "file_error": "sample_data/errors_Y6.dat",
     "hpx_cats_path": "results/hpx_cats",
+    "hpx_cats_clean_path": "results/hpx_cats_clean",
     "star_clusters_simulated": "results/star_clusters_simulated.dat",
     "output_plots": "results/plots",
     "results_path": "results",

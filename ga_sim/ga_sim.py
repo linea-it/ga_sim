@@ -81,7 +81,7 @@ def king_prof(N_stars, rc, rt):
     return np.multiply(rad_star, rt)
 
 
-def clean_input_cat_dist(file_name, ra_str, dec_str, max_dist_arcsec):
+def clean_input_cat_dist(dir_name, file_name, ra_str, dec_str, max_dist_arcsec):
     """ This function removes stars closer than max_dist_arcsec. That is specially significant to
     stellar clusters, where the stellar crowding in images creates a single
     object in cluster's center, but many star in the periphery.
@@ -98,7 +98,7 @@ def clean_input_cat_dist(file_name, ra_str, dec_str, max_dist_arcsec):
         Stars closer than this par will be removed. Units: arcsec.
     """
 
-    output_file = file_name.split('.')[0] + '_clean_dist.fits'
+    output_file = dir_name + '/' + file_name.split('/')[-1]
 
     data = getdata(file_name)
     t = Table.read(file_name)
