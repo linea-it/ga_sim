@@ -6,6 +6,7 @@ import healpy as hp
 import matplotlib.path as mpath
 import numpy as np
 import sqlalchemy
+import glob
 from astropy.table import Table
 from astropy import units as u
 from astropy.coordinates import SkyCoord, match_coordinates_sky
@@ -14,7 +15,34 @@ from scipy.stats import expon
 from pathlib import Path
 from itertools import compress
 
-# @python_app
+
+def export_results(proc_dir):
+    """This function exports the results of the run to a directory called proc_dir,
+    creating a subfolder with number following the last process in that folder.
+
+    Parameters
+    ----------
+    proc_dir : str
+        Directory where the subfolder with all the results will be copied to.
+    """
+
+    dir_list = glob.glob(proc_dir + '*')
+    new_dir = proc_dir + "{0:05d}".format(int(dir_list[-1].split('/')[-1]) + 1)
+    os.system('mkdir -p ' + new_dir)
+    os.system('mkdir -p ' + new_dir + '/detections')
+    os.system('mkdir -p ' + new_dir + '/simulations')
+    os.system('mkdir -p ' + new_dir + '/simulations/sample_data')    
+    os.system('cp sample_data/*.dat' + ' ' + new_dir + '/simulations/sample_data/')
+    os.system('cp sample_data/*.asc' + ' ' + new_dir + '/simulations/sample_data/')
+    dirs = glob.glob('results/*/')
+    for i in dirs:
+        os.system('cp -r ' + i + ' ' + new_dir + '/simulations/')
+    files = glob.glob('results/*.*')
+    for i in files:
+        os.system('cp ' + i + ' ' + new_dir + '/simulations/')
+    files2 = glob.glob('*.*')
+    for i in files2:
+        os.system('cp ' + i + ' ' + new_dir + '/simulations/')
 
 
 def king_prof(N_stars, rc, rt):
@@ -749,6 +777,8 @@ def d_star_real_cat(hpx_ftp, length, nside3, nside_ftp):
     
     import matplotlib.pyplot as plt
     plt.scatter(ra_mw_stars, dec_mw_stars, s=0.001)
+    plt.xlabel('RA (deg)')
+    plt.ylabel('DEC (deg)')
     plt.show()
 
     return ra_mw_stars, dec_mw_stars

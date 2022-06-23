@@ -22,7 +22,8 @@ from ga_sim.ga_sim import (
     join_cats_clean,
     split_files,
     clean_input_cat,
-    clean_input_cat_dist
+    clean_input_cat_dist,
+    export_results
 )
 from ga_sim.plot import (
     plot_clusters_clean,
