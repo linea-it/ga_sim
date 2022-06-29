@@ -514,23 +514,27 @@ def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax
         Contents of table where magnitudes are free-extnction (top of Galaxy).
     """
     engine = sqlalchemy.create_engine(
-        'postgresql://untrustedprod:untrusted@desdb4.linea.gov.br:5432/prod_gavo')
+        'postgresql://untrustedprod:untrusted@desdb6.linea.gov.br:5432/prod_gavo')
     conn = engine.connect()
-
-    query = 'select ra, dec, mag_g, magerr_g, mag_r, magerr_r from %s where (ra > %s) and (ra <%s) and (dec > %s) and (dec < %s)' % (
-        tablename, ra_min, ra_max, dec_min, dec_max)
+    print('0')
+    query = 'select ra, dec, mag_g, magerr_g, mag_r, magerr_r from %s where (ra > %s) and (ra < %s) and (dec > %s) and (dec < %s) and (extendedness = 0)' % (tablename, ra_min, ra_max, dec_min, dec_max)
     stm = sqlalchemy.sql.text(query)
     stm_get = conn.execute(stm)
     stm_result = stm_get.fetchall()
-    table = Table(rows=stm_result, names=(
-        'ra', 'dec', 'mag_g', 'magerr_g', 'mag_r', 'magerr_r'))
-
+    table = Table(rows=stm_result, names=('ra', 'dec', 'mag_g', 'magerr_g', 'mag_r', 'magerr_r'))
+    print('0.5')
     RA = np.array(table['ra'])
     DEC = np.array(table['dec'])
     MAG_G = np.array(table['mag_g'])
     MAGERR_G = np.array(table['magerr_g'])
     MAG_R = np.array(table['mag_r'])
     MAGERR_R = np.array(table['magerr_r'])
+    print('0.75')
+    cond1 = (MAG_G == None)|(MAG_R == None)
+    MAG_G = np.where(cond1, -99, MAG_G)
+    MAGERR_G = np.where(cond1, -99, MAGERR_G)
+    MAG_R = np.where(cond1, -99, MAG_R)
+    MAGERR_R = np.where(cond1, -99, MAGERR_R)
 
     c = SkyCoord(
         ra=RA * u.degree,
@@ -539,11 +543,11 @@ def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax
     )
     L = c.galactic.l.degree
     B = c.galactic.b.degree
-
+    print('0.9')
     MAG_G -= AG_AV * get_av(L, B, ngp, sgp)
     MAG_R -= AR_AV * get_av(L, B, ngp, sgp)
 
-    cond = (MAG_G < mmax) & (MAG_G > mmin) & (
+    cond = (np.abs(MAG_G) < mmax) & (np.abs(MAG_G) > mmin) & (
         MAG_G-MAG_R > cmin) & (MAG_G-MAG_R < cmax)
 
     RA = RA[cond]
@@ -556,7 +560,7 @@ def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax
     hdu2 = fits.open(hpx_ftp, memmap=True)
     hpx_ftp_data = hdu2[1].data.field("HP_PIXEL_NEST_4096")
     hdu2.close()
-
+    print('1')
     RA_sort, DEC_sort = d_star_real_cat(hpx_ftp_data, len(RA), nside3, nside_ftp)
     
     col1 = fits.Column(name='RA', format='D', array=RA_sort)
@@ -568,11 +572,11 @@ def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax
 
     cols = fits.ColDefs([col1, col2, col3, col4, col5, col6])
     tbhdu = fits.BinTableHDU.from_columns(cols)
-
+    print('2')
     des_cat_filepath = Path(results_path, outfile)
     tbhdu.writeto(des_cat_filepath, overwrite=True)
-
-    return RA_sort, DEC_sort, MAG_G, MAGERR_G, MAG_R, MAGERR_R
+    print('3')
+    # return RA_sort, DEC_sort, MAG_G, MAGERR_G, MAG_R, MAGERR_R
 
 
 def dist_ang(ra1, dec1, ra_ref, dec_ref):
