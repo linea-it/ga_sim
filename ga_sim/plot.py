@@ -122,7 +122,7 @@ def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half
             j += 1
     plt.subplots_adjust(wspace=0, hspace=0)
     plt.savefig(output_dir + '/clusters_with_and_without_crowded_stars.png')
-    plt.show()
+    # plt.show()
     plt.close()
 
     
@@ -192,7 +192,7 @@ def general_plots(star_clusters_simulated, output_dir):
     ax3.set_ylim([np.max(MAG_ABS_V_CLEAN[MAG_ABS_V < 0.0]) + 0.1, np.min(MAG_ABS_V[MAG_ABS_V < 0.0]) - 0.1])
     ax3.legend()
     plt.savefig(output_dir + '/hist_MV.png')
-    plt.show()
+    # plt.show()
     plt.close()
 
 
@@ -263,7 +263,7 @@ def plot_ftp(
     axs.grid()
     plt.legend(loc=1)
     plt.savefig(output_dir + '/ftp.png')
-    plt.show()
+    # plt.show()
     plt.close()
 
 
@@ -308,7 +308,7 @@ def plots_ang_size(
         plt.xlabel('mag1-mag2')
         plt.ylabel('mag1')
         plt.savefig(str(int(i)) + '_cmd.png')
-        plt.show()
+        # plt.show()
         plt.close()
 
         h1, xedges, yedges, im1 = plt.hist2d(
@@ -337,7 +337,7 @@ def plots_ang_size(
         plt.ylabel("mag1")
         plt.colorbar(im1, cmap=cmap, orientation="vertical", label="stars per bin")
         plt.savefig(plot_filepath)
-        plt.show()
+        # plt.show()
         plt.close()
         
     name_DG, ra_DG, dec_DG, dist_kpc_DG, Mv_DG, rhl_pc_DG, FeH_DG, name_GC, R_MW_GC, FeH_GC, mM_GC, Mv_GC, rhl_pc_GC, dist_kpc_GC, rhl_arcmin_GC = read_real_cat()
@@ -410,7 +410,7 @@ def plots_ang_size(
     ax6.set_ylabel("N stars")
     ax6.legend()
     # plt.savefig(output_plots + '/hist_mass.png')
-    plt.show()
+    # plt.show()
     # plt.close()
 
     '''
@@ -559,7 +559,7 @@ def plots_ref(FeH_iso,
 
     filepath = Path(output_plots, "_01_real_objects.png")
     plt.savefig(filepath)
-    plt.show()
+    # plt.show()
     plt.close()
 
     #  PLOT 2 ----------------
@@ -580,7 +580,7 @@ def plots_ref(FeH_iso,
     plt.grid()
     filepath = Path(output_plots, "_02_feh_rgc.png")
     plt.savefig(filepath)
-    plt.show()
+    # plt.show()
     plt.close()
 
     # rhl = np.logspace(np.log10(1.8), np.log10(1800), 10, endpoint=True)
@@ -669,5 +669,5 @@ def plot_err(
 
     filepath = Path(output_plots, "simulated_stars_err.png")
     plt.savefig(filepath)
-    plt.show()
+    # plt.show()
     plt.close()
