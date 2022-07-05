@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: autopep8 -*-
 import os
 import astropy.coordinates as coord
 import astropy.io.fits as fits
@@ -24,15 +24,17 @@ def export_results(proc_dir):
     proc_dir : str
         Directory where the subfolder with all the results will be copied to.
     """
-    
+
     dir_list = glob.glob(proc_dir + '*')
     new_dir = proc_dir + "{0:05d}".format(int(dir_list[-1].split('/')[-1]) + 1)
     os.system('mkdir -p ' + new_dir)
     os.system('mkdir -p ' + new_dir + '/detections')
     os.system('mkdir -p ' + new_dir + '/simulations')
-    os.system('mkdir -p ' + new_dir + '/simulations/sample_data')    
-    os.system('cp sample_data/*.dat' + ' ' + new_dir + '/simulations/sample_data/')
-    os.system('cp sample_data/*.asc' + ' ' + new_dir + '/simulations/sample_data/')
+    os.system('mkdir -p ' + new_dir + '/simulations/sample_data')
+    os.system('cp sample_data/*.dat' + ' ' +
+              new_dir + '/simulations/sample_data/')
+    os.system('cp sample_data/*.asc' + ' ' +
+              new_dir + '/simulations/sample_data/')
     dirs = glob.glob('results/*/')
     for i in dirs:
         os.system('cp -r ' + i + ' ' + new_dir + '/simulations/')
@@ -65,7 +67,7 @@ def king_prof(N_stars, rc, rt):
     array-like
         Radial distribution of stars.
     """
-    
+
     rad_star = []
     radius = np.linspace(0, 1., 1000)
     rc /= rt
@@ -97,11 +99,6 @@ def clean_input_cat_dist(dir_name, file_name, ra_str, dec_str, max_dist_arcsec):
     max_dist_arcsec : float
         Stars closer than this par will be removed. Units: arcsec.
     """
-    
-    # import astropy.io.fits as fits
-    # import numpy as np
-    # from astropy.table import Table
-    # from astropy.io.fits import getdata
 
     output_file = dir_name + '/' + file_name.split('/')[-1]
 
@@ -159,10 +156,7 @@ def exp_prof(N_stars, rexp, max_length=10):
     array
         Radius of stars following exponential density profile.
     """
-    
-    import numpy as np
-    
-    
+
     rad_star = []
     while len(rad_star) < N_stars:
         rd_nmb = np.random.rand(1, 2)
@@ -188,13 +182,7 @@ def join_cats_clean(ipix_cats, output_file, ra_str, dec_str):
     dec_str : str
         Label of DEC coordinate.
     """
-    
-    import astropy.io.fits as fits
-    import numpy as np
-    from astropy.table import Table
-    from astropy.io.fits import getdata
-    
-    
+
     t = Table.read(ipix_cats[0])
     label_columns = t.colnames
     t_format = []
@@ -242,12 +230,7 @@ def split_files(in_file, ra_str, dec_str, nside, path):
         Name and path of output files.
     """
 
-    import healpy as hp
-    import astropy.io.fits as fits
-    import numpy as np
-    from astropy.table import Table
-    from astropy.io.fits import getdata
-    # os.system('mkdir -p ' + path)
+    os.system('mkdir -p ' + path)
 
     data = getdata(in_file)
     t = Table.read(in_file)
@@ -275,7 +258,6 @@ def split_files(in_file, ra_str, dec_str, nside, path):
     return [(path + '/' + str(i) + '.fits') for i in HPX_un]
 
 
-# @python_app
 def clean_input_cat(file_name, ra_str, dec_str, nside):
     """ This function removes all the stars that resides in the same ipix with
     nside = nside. This is done to simulate the features of real catalogs based on
@@ -297,12 +279,6 @@ def clean_input_cat(file_name, ra_str, dec_str, nside):
     nside : int
         Nside to be populated.
     """
-    
-    import healpy as hp
-    import astropy.io.fits as fits
-    import numpy as np
-    from astropy.table import Table
-    from astropy.io.fits import getdata
 
     output_file = file_name.split('.')[0] + '_clean.fits'
 
@@ -358,11 +334,7 @@ def clus_file_results(results_path, out_file, sim_clus_feat, objects_filepath):
     objects_filepath : str
         Name of file with n_stars and absolute magnitude.
     """
-    
-    import os
-    from pathlib import Path
-    
-    
+
     star_clusters_simulated = Path(results_path, out_file)
     with open(star_clusters_simulated, 'w') as fff:
         print('#0-HPX64 1-N 2-MV 3-SNR 4-N_f 5-MV_f 6-SNR_f 7-L 8-B 9-ra 10-dec 11-r_exp 12-ell 13-pa 14-mass 15-dist', file=fff)
@@ -388,10 +360,7 @@ def read_error(infile, to_add_mag1, to_add_mag2):
     list
         List of magnitudes and errors in band 1 and 2.
     """
-    
-    import numpy as np
-    
-    
+
     mag1_, err1_, err2_ = np.loadtxt(infile, usecols=(0, 1, 2), unpack=True)
     err1_ += to_add_mag1
     err2_ += to_add_mag2
@@ -451,12 +420,7 @@ def gen_clus_file(ra_min, ra_max, dec_min, dec_max, nside_ini, border_extract,
         ellipticity. positional angle, distance in parsecs, mass in 
         Sun masses, distance modulus, and list of ipix sampled.
     """
-    import healpy as hp
-    import numpy as np
-    from astropy import units as u
-    from astropy.coordinates import SkyCoord, match_coordinates_sky
-    from pathlib import Path
-    
+
     cell_area = hp.nside2pixarea(nside_ini, degrees=True)
 
     area = (
@@ -555,31 +519,24 @@ def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax
         RA, DEC, MAG_G, MAGERR_G, MAG_R, MAGERR_R
         Contents of table where magnitudes are free-extnction (top of Galaxy).
     """
-    
-    import astropy.io.fits as fits
-    import numpy as np
-    import sqlalchemy
-    from astropy.table import Table
-    from astropy import units as u
-    from astropy.coordinates import SkyCoord, match_coordinates_sky
-    from pathlib import Path
-    
-    
+
     engine = sqlalchemy.create_engine(
         'postgresql://untrustedprod:untrusted@desdb6.linea.gov.br:5432/prod_gavo')
     conn = engine.connect()
-    query = 'select ra, dec, mag_g, magerr_g, mag_r, magerr_r from %s where (ra > %s) and (ra < %s) and (dec > %s) and (dec < %s) and (extendedness = 0)' % (tablename, ra_min, ra_max, dec_min, dec_max)
+    query = 'select ra, dec, mag_g, magerr_g, mag_r, magerr_r from %s where (ra > %s) and (ra < %s) and (dec > %s) and (dec < %s) and (extendedness = 0)' % (
+        tablename, ra_min, ra_max, dec_min, dec_max)
     stm = sqlalchemy.sql.text(query)
     stm_get = conn.execute(stm)
     stm_result = stm_get.fetchall()
-    table = Table(rows=stm_result, names=('ra', 'dec', 'mag_g', 'magerr_g', 'mag_r', 'magerr_r'))
+    table = Table(rows=stm_result, names=(
+        'ra', 'dec', 'mag_g', 'magerr_g', 'mag_r', 'magerr_r'))
     RA = np.array(table['ra'])
     DEC = np.array(table['dec'])
     MAG_G = np.array(table['mag_g'])
     MAGERR_G = np.array(table['magerr_g'])
     MAG_R = np.array(table['mag_r'])
     MAGERR_R = np.array(table['magerr_r'])
-    cond1 = (MAG_G == None)|(MAG_R == None)
+    cond1 = (MAG_G == None) | (MAG_R == None)
     MAG_G = np.where(cond1, -99, MAG_G)
     MAGERR_G = np.where(cond1, -99, MAGERR_G)
     MAG_R = np.where(cond1, -99, MAG_R)
@@ -592,7 +549,7 @@ def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax
     )
     L = c.galactic.l.degree
     B = c.galactic.b.degree
-    
+
     MAG_G -= AG_AV * get_av(L, B, ngp, sgp)
     MAG_R -= AR_AV * get_av(L, B, ngp, sgp)
 
@@ -605,13 +562,14 @@ def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax
     MAG_R = MAG_R[cond]
     MAGERR_G = MAGERR_G[cond]
     MAGERR_R = MAGERR_R[cond]
-    
+
     hdu2 = fits.open(hpx_ftp, memmap=True)
     hpx_ftp_data = hdu2[1].data.field("HP_PIXEL_NEST_4096")
     hdu2.close()
-    
-    RA_sort, DEC_sort = d_star_real_cat(hpx_ftp_data, len(RA), nside3, nside_ftp)
-    
+
+    RA_sort, DEC_sort = d_star_real_cat(
+        hpx_ftp_data, len(RA), nside3, nside_ftp)
+
     col1 = fits.Column(name='RA', format='D', array=RA_sort)
     col2 = fits.Column(name='DEC', format='D', array=DEC_sort)
     col3 = fits.Column(name='MAG_G', format='E', array=MAG_G)
@@ -621,10 +579,10 @@ def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax
 
     cols = fits.ColDefs([col1, col2, col3, col4, col5, col6])
     tbhdu = fits.BinTableHDU.from_columns(cols)
-    
+
     des_cat_filepath = Path(results_path, outfile)
     tbhdu.writeto(des_cat_filepath, overwrite=True)
-    
+
     return RA_sort, DEC_sort, MAG_G, MAGERR_G, MAG_R, MAGERR_R
 
 
@@ -648,10 +606,7 @@ def dist_ang(ra1, dec1, ra_ref, dec_ref):
         first couple of inputs to the position of reference.
 
     """
-    
-    import numpy as np
-    
-    
+
     costheta = np.sin(np.radians(dec_ref)) * np.sin(np.radians(dec1)) + np.cos(
         np.radians(dec_ref)
     ) * np.cos(np.radians(dec1)) * np.cos(np.radians(ra1 - ra_ref))
@@ -659,7 +614,7 @@ def dist_ang(ra1, dec1, ra_ref, dec_ref):
     return np.rad2deg(dist_ang)
 
 
-def download_iso(version, phot_system, Z, age, av_ext, out_file):
+def download_iso(version, phot_system, Z, age, av_ext, out_file, iter_max):
     """Submit a request of an isochrone from PADOVA schema, download the file
     requested and uses as an input file to the stellar population of clusters.
     Good reference to Fe/H and M/H and Z:
@@ -681,10 +636,10 @@ def download_iso(version, phot_system, Z, age, av_ext, out_file):
         Name of the output file, which is written as 
         output.
     """
-    
-    import os
-    
-    
+
+    len_col = 0
+    count = 0
+
     main_pars = "track_parsec=parsec_CAF09_v1.2S&track_colibri=parsec_CAF09_v1.2S_S_LMC_08_web&track_postagb=" + "no&n_inTPC=10&eta_reimers=0.2&kind_interp=1&kind_postagb=-1&kind_tpagb=-1&kind_pulsecycle=" + \
         "0&kind_postagb=-1&kind_mag=2&kind_dust=0&extinction_coeff=constant&extinction_curve=" + \
         "cardelli&kind_LPV=1&dust_sourceM=dpmod60alox40&dust_sourceC=AMCSIC15&imf_file=tab_imf/" + \
@@ -692,20 +647,26 @@ def download_iso(version, phot_system, Z, age, av_ext, out_file):
     webserver = "http://stev.oapd.inaf.it"
     if phot_system == 'des':
         phot_system = 'decam'
-    try:
-        os.system(("wget -o lixo -Otmp --post-data='submit_form=Submit&cmd_version={}&photsys_file=tab_mag_odfnew/tab_mag_{}.dat&photsys_version=YBC&output_kind=0&output_evstage=1&isoc_isagelog=0&isoc_agelow={:.2e}&isoc_ageupp={:.2e}&isod_dage=0&isoc_ismetlog=0&isoc_zlow={:.6f}&isoc_zupp={:.6f}&isod_dz=0&extinction_av={:.3f}&{}' {}/cgi-bin/cmd_{}".format(
-            version, phot_system, age, age, Z, Z, av_ext, main_pars, webserver, version)).replace('e+', 'e'))
-    except:
-        print("No communication with {}".format(webserver))
-    with open('tmp') as f:
-        aaa = f.readlines()
-        for i, j in enumerate(aaa):
-            if '/output' in j:
-                out_file_tmp = 'output' + \
-                    j.split("/output", )[1][0:12] + '.dat'
-    os.system("wget -o lixo -O{} {}/tmp/{}".format(out_file_tmp,
-              webserver, out_file_tmp))
-    os.system("mv {} {}".format(out_file_tmp, out_file))
+
+    while (len_col < 10) | (count < iter_max):
+        try:
+            os.system(("wget -o lixo -Otmp --post-data='submit_form=Submit&cmd_version={}&photsys_file=tab_mag_odfnew/tab_mag_{}.dat&photsys_version=YBC&output_kind=0&output_evstage=1&isoc_isagelog=0&isoc_agelow={:.2e}&isoc_ageupp={:.2e}&isod_dage=0&isoc_ismetlog=0&isoc_zlow={:.6f}&isoc_zupp={:.6f}&isod_dz=0&extinction_av={:.3f}&{}' {}/cgi-bin/cmd_{}".format(
+                version, phot_system, age, age, Z, Z, av_ext, main_pars, webserver, version)).replace('e+', 'e'))
+        except:
+            print("No communication with {}".format(webserver))
+        with open('tmp') as f:
+            aaa = f.readlines()
+            for i, j in enumerate(aaa):
+                if '/output' in j:
+                    out_file_tmp = 'output' + \
+                        j.split("/output", )[1][0:12] + '.dat'
+        os.system("wget -o lixo -O{} {}/tmp/{}".format(out_file_tmp,
+                  webserver, out_file_tmp))
+        os.system("mv {} {}".format(out_file_tmp, out_file))
+
+        len_col = len(np.loadtxt(out_file, usecols=(1), unpack=True))
+
+        count += 1
 
 
 def get_av(gal_l, gal_b, ngp, sgp):
@@ -731,10 +692,7 @@ def get_av(gal_l, gal_b, ngp, sgp):
     av : list
         a list of Galactic extinction in the V band to each position
     """
-    
-    import numpy as np
-    
-    
+
     lt = np.radians(gal_l)
     bt = np.radians(gal_b)
 
@@ -779,11 +737,6 @@ def make_footprint(
     list
         a list of ipixels in the area selected (inclusive=False)
     """
-    
-    import healpy as hp
-    import astropy.io.fits as fits
-    import numpy as np
-    from pathlib import Path
 
     vertices = hp.ang2vec(
         [ra_min, ra_max, ra_max, ra_min],
@@ -797,8 +750,6 @@ def make_footprint(
 
     filename = "ftp_4096_nest.fits"
     filepath = Path(output_path, filename)
-
-    # m = np.bincount(hp_sample, minlength=hp.nside2npix(nside_ftp))
 
     # hp.mollview(m, nest=True, flip='astro')
     SIGNAL = np.ones(len(hp_sample))
@@ -832,10 +783,8 @@ def d_star_real_cat(hpx_ftp, length, nside3, nside_ftp):
     -------
     ra_mw_stars, dec_mw_stars : lists
         The position of the stars in the catalog (degrees)
-    """   
-    import healpy as hp
-    import numpy as np
-    
+    """
+
     f2 = np.int_(nside3 / nside_ftp) ** 2
     # A = np.repeat(hpx_ftp, f2**2)
     A = np.random.choice(hpx_ftp, length, replace=True)
@@ -844,15 +793,9 @@ def d_star_real_cat(hpx_ftp, length, nside3, nside_ftp):
     set_pixels_nside3 = np.int_(A) * f2 + a
     hpx_star = np.random.choice(set_pixels_nside3, length, replace=False)
     np.random.shuffle(hpx_star)
-    
+
     ra_mw_stars, dec_mw_stars = hp.pix2ang(
         nside3, hpx_star, nest=True, lonlat=True)
-    
-    import matplotlib.pyplot as plt
-    plt.scatter(ra_mw_stars, dec_mw_stars, s=0.001)
-    plt.xlabel('RA (deg)')
-    plt.ylabel('DEC (deg)')
-    plt.show()
 
     return ra_mw_stars, dec_mw_stars
 
@@ -877,8 +820,7 @@ def IMF_(author):
         return {"IMF_alpha_1": -1.3, "IMF_alpha_2": -2.3, "IMF_mass_break": 0.5}
     if author == "Salpeter":
         return {"IMF_alpha_1": -2.3, "IMF_alpha_2": -2.3, "IMF_mass_break": 0.5}
-
-    # TODO: O que acontece se usuario passar um valor diferente? Tratar essa situação para informar o usuario.
+    print('Please, the IMF type was not added to the list of IMF authors.')
 
 
 def apply_err(mag, mag_table, err_table):
@@ -900,10 +842,7 @@ def apply_err(mag, mag_table, err_table):
         a list of magnitude errors following Normal distribution with
         1-sigma error as informed
     """
-    
-    import numpy as np
-    
-    
+
     err_interp = np.interp(mag, mag_table, err_table)
     return np.abs(err_interp * np.random.randn(len(err_interp)))
 
@@ -932,8 +871,6 @@ def faker_bin(total_bin, IMF_author, file_in, dist):
     binaries[:,1]
         a list of magnitudes of the binaries in the second band
     """
-    
-    import numpy as np
 
     mass, mag1, mag2 = np.loadtxt(file_in, usecols=(3, 29, 30), unpack=True)
 
@@ -1011,10 +948,7 @@ def unc(mag, mag_table, err_table):
     err_interp : float or list
         Magnitudes interpolated
     """
-    
-    import numpy as np
-    
-    
+
     err_interp = np.interp(mag, mag_table, err_table)
     return err_interp
 
@@ -1038,7 +972,10 @@ def faker(
     err1_,
     err2_,
     file_iso,
-    output_path
+    output_path,
+    mag_ref_comp,
+    comp_mag_ref,
+    comp_mag_max,
 ):
     """Creates an array with positions, magnitudes, magnitude errors and magnitude
     uncertainties for the simulated stars in two bands.
@@ -1053,6 +990,10 @@ def faker(
     N_stars_single = amount of stars that are single stars.
     N_stars_bin = amount of stars that are binaries in the CMD. For each of these kind of
     stars, a companion should be calculated later.
+    Completeness function is a step function modified where the params are a magnitude of
+    reference and its completeness, and the completeness at maximum magnitude. The complete-
+    ness function is equal to unity to magnitudes brighter than reference magnitude, and
+    decreases linearly to the maximum magnitude.
 
     Parameters
     ----------
@@ -1099,11 +1040,16 @@ def faker(
         List of errors in redder magnitude.
     file_iso : str
         Name of file with data from isochrone.
+    output_path : str
+        Folder where the files will be written.
+    mag_ref_comp : float
+        Magnitude of reference where the completeness is equal to comp_mag_ref.
+    comp_mag_ref : float
+        Completeness (usually unity) at mag_ref_comp.
+    comp_mag_max : float
+        Completeness (value between 0. and 1.) at the maximum magnitude.
+
     """
-    
-    import os
-    import numpy as np
-    from pathlib import Path
 
     # Cria o diretório de output se não existir
     os.system('mkdir -p ' + output_path)
@@ -1173,7 +1119,8 @@ def faker(
     # apply binarity
     # definition of binarity: fb = N_stars_in_binaries / N_total
     N_stars_bin = int(N_stars_cmd / ((2.0 / frac_bin) - 1))
-    mag1_bin, mag2_bin, mass_bin = faker_bin(N_stars_bin, "Kroupa", file_iso, dist)
+    mag1_bin, mag2_bin, mass_bin = faker_bin(
+        N_stars_bin, "Kroupa", file_iso, dist)
 
     j = np.random.randint(N_stars_cmd, size=N_stars_bin)
     k = np.random.randint(N_stars_bin, size=N_stars_bin)
@@ -1192,9 +1139,9 @@ def faker(
     star[:, 4] = unc(star[:, 2], mag1_, err1_)
     star[:, 7] = unc(star[:, 5], mag1_, err2_)
 
-    mag_ref_comp = 22.5
-    comp_mag_ref = 1.0
-    comp_mag_max = 0.10
+    # mag_ref_comp = 22.5
+    # comp_mag_ref = 1.0
+    # comp_mag_max = 0.10
     dy_dx = (comp_mag_max - comp_mag_ref) / (mmax - mag_ref_comp)
     p_values = np.zeros(len(star[:, 0]))
     cond = star[:, 2] + star[:, 3] > mag_ref_comp
@@ -1202,7 +1149,7 @@ def faker(
         (comp_mag_ref - dy_dx * mag_ref_comp)
         + dy_dx * (star[:, 2][cond] + star[:, 3][cond])
     )
-    p_values[star[:, 2] > mmax] = 1.0e-9
+    p_values[star[:, 2] > mmax] = 1.0e-9  # virtually zero
     p_values[star[:, 2] < mag_ref_comp] = 1.0
 
     star_comp = np.random.choice(
@@ -1313,11 +1260,6 @@ def join_cat(
     cmax : float
         Maximum color of stars.
     """
-    
-    import healpy as hp
-    import astropy.io.fits as fits
-    import numpy as np
-    from pathlib import Path
 
     GC = np.zeros(len(RA), dtype=int)
 
@@ -1431,12 +1373,7 @@ def snr_estimate(
         and N_outter_circle is the star counts in the outter circle
         normalized by the area of the inner_circle.
     """
-    import healpy as hp
-    import matplotlib.path as mpath
-    import numpy as np
-    from pathlib import Path
-    from itertools import compress
-    
+
     ra_center, dec_center = hp.pix2ang(nside1, PIX_sim, nest=True, lonlat=True)
     # loading data from isochronal mask
     gr_mask, g_mask, kind_mask = np.loadtxt(
@@ -1450,8 +1387,10 @@ def snr_estimate(
     # e de release a release. Talvez fazer pastas com o nome do survey e colocar
     # eles apenas como mag1_err e mag2_err fosse melhor. ou informar no set de
     # parametros.
-    _g, _gerr = np.loadtxt("sample_data/errors_Y6.dat", usecols=(0, 1), unpack=True)
-    _r, _rerr = np.loadtxt("sample_data/errors_Y6.dat", usecols=(0, 2), unpack=True)
+    _g, _gerr = np.loadtxt("sample_data/errors_Y6.dat",
+                           usecols=(0, 1), unpack=True)
+    _r, _rerr = np.loadtxt("sample_data/errors_Y6.dat",
+                           usecols=(0, 2), unpack=True)
 
     for i in range(len(gr_mask)):
         err_ = np.sqrt(
@@ -1487,7 +1426,8 @@ def snr_estimate(
 
 
 def write_sim_clus_features(
-    mockcat, mockcat_clean, hp_sample_un, nside_ini, mM, output_path=Path("results")
+    mockcat, mockcat_clean, hp_sample_un, nside_ini, mM, output_path=Path(
+        "results")
 ):
     """
     Write a few features of the clusters in a file called 'N_stars,dat'.
@@ -1507,10 +1447,6 @@ def write_sim_clus_features(
     for two clusters with the same mass (stars are a numerical realization
     within an IMF).
     """
-    
-    import astropy.io.fits as fits
-    import numpy as np
-    from pathlib import Path
 
     hdu = fits.open(mockcat, memmap=True)
     GC = hdu[1].data.field("GC")
@@ -1536,7 +1472,8 @@ def write_sim_clus_features(
             cond = HPX64 == hp_sample_un[j]
             RA__, DEC__, MAGG__, MAGR__ = RA[cond], DEC[cond], MAG_G[cond], MAG_R[cond]
             cond_clean = HPX64_clean == hp_sample_un[j]
-            RA__clean, DEC__clean, MAGG__clean, MAGR__clean = RA_clean[cond_clean], DEC_clean[cond_clean], MAG_G_clean[cond_clean], MAG_R_clean[cond_clean]
+            RA__clean, DEC__clean, MAGG__clean, MAGR__clean = RA_clean[cond_clean], DEC_clean[
+                cond_clean], MAG_G_clean[cond_clean], MAG_R_clean[cond_clean]
 
             # plt.scatter(RA__, DEC__)
             # plt.show()
@@ -1586,7 +1523,8 @@ def write_sim_clus_features(
             flux_r_clean = 10 ** (-0.4 * MAGR_clus_clean)
             M_abs_g_clean = -2.5 * np.log10(np.sum(flux_g_clean)) - mM[j]
             M_abs_r_clean = -2.5 * np.log10(np.sum(flux_r_clean)) - mM[j]
-            M_abs_V_clean = M_abs_g_clean - 0.58 * (M_abs_g_clean - M_abs_r_clean) - 0.01
+            M_abs_V_clean = M_abs_g_clean - 0.58 * \
+                (M_abs_g_clean - M_abs_r_clean) - 0.01
 
             print(
                 "{:d} {:d} {:.2f} {:.2f} {:d} {:.2f} {:.2f}".format(
@@ -1601,12 +1539,6 @@ def SplitFtpHPX(
     file_in, out_dir, nside_in=4096, nest_in=True, nside_out=64, nest_out=True
 ):
 
-    import healpy as hp
-    import os
-    import astropy.io.fits as fits
-    from astropy.io.fits import getdata
-    
-    
     # TODO: Usar pathlib com a opção que já verifica se o diretório existe
     try:
         os.mkdir(out_dir)
@@ -1651,13 +1583,7 @@ def radec2GCdist(ra, dec, dist_kpc):
     float of list
         the Galactocentric distance to the object[s]
     """
-    
-    import astropy.coordinates as coord
-    import numpy as np
-    from astropy import units as u
-    from astropy.coordinates import SkyCoord, match_coordinates_sky
-    
-    
+
     c1 = coord.SkyCoord(
         ra=ra * u.degree, dec=dec * u.degree, distance=dist_kpc * u.kpc, frame="icrs"
     )
@@ -1671,8 +1597,6 @@ def radec2GCdist(ra, dec, dist_kpc):
 
 
 def remove_close_stars(input_cat, output_cat, nside_ini, PSF_factor, PSF_size):
-    # TODO: this function is really slow. Improve that function to remove
-    # star closer than an specific distance in parallel.
     """This function removes the stars closer than PSF_factor * PSF_size
     This is an observational bias of the DES since the photometric pipeline
     is set to join regions closer than an specific distance.
@@ -1694,15 +1618,7 @@ def remove_close_stars(input_cat, output_cat, nside_ini, PSF_factor, PSF_size):
         is less than PSF_factor * PSF_size, none of the objects survives.
 
     """
-    
-    import healpy as hp
-    import astropy.io.fits as fits
-    import numpy as np
-    from astropy import units as u
-    from astropy.coordinates import SkyCoord, match_coordinates_sky
-    from pathlib import Path
-    
-    
+
     input_cat = Path(input_cat)
     output_cat = Path(output_cat)
 
@@ -1719,12 +1635,16 @@ def remove_close_stars(input_cat, output_cat, nside_ini, PSF_factor, PSF_size):
 
     idx = []
     seplim = (PSF_factor * PSF_size / 3600) * u.degree
+
     for i in range(len(ra)):
+        init_sep_ra_deg = 2. * PSF_factor * PSF_size / \
+            (3600 * np.cos(np.deg2rad(ra[i])))
+        init_sep_dec_deg = 2. * PSF_factor * PSF_size / 3600
         cond = (
-            (ra > ra[i] - 0.05)
-            & (ra < ra[i] + 0.05)
-            & (dec > dec[i] - 0.05)
-            & (dec < dec[i] + 0.05)
+            (ra > ra[i] - init_sep_ra_deg)
+            & (ra < ra[i] + init_sep_ra_deg)
+            & (dec > dec[i] - init_sep_dec_deg)
+            & (dec < dec[i] + init_sep_dec_deg)
         )
 
         c = SkyCoord(ra=ra[cond] * u.degree, dec=dec[cond] * u.degree)
@@ -1734,10 +1654,6 @@ def remove_close_stars(input_cat, output_cat, nside_ini, PSF_factor, PSF_size):
         cond2 = [sep2d < seplim]
         if len(idx_[cond2]) == 0:
             idx.append(i)
-        # dists = dist_ang(ra[cond], dec[cond], ra[i], dec[i])
-        # dist = np.sort(list(dists))[1]
-        # if dist > (PSF_factor * PSF_size/3600.):
-        #    idx.append(i)
 
     HPX64 = hp.ang2pix(nside_ini, ra, dec, nest=True, lonlat=True)
     col0 = fits.Column(name="GC", format="I",
