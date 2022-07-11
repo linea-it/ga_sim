@@ -30,7 +30,6 @@ from ga_sim.plot import (
     general_plots,
     plot_ftp,
     plots_ang_size,
-    plots_ref,
     plot_err,
 )
 
