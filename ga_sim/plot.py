@@ -441,12 +441,12 @@ def plots_ang_size(
     ax7.legend(loc=2)
     ax7.set_title('Histogram of Absolute Magnitude (V band)')
 
-    ax8.hist(rhl_pc_DG, bins=20, histtype="stepfilled", range=(0, 2500), label="DG", color="b", alpha=0.5)
-    ax8.hist(rhl_pc_GC, bins=20, histtype="step", range=(0, 2500), label="GC", color="k")
-    ax8.hist(RHL_PC_SIM, bins=20, histtype="stepfilled", range=(0, 2500), label="Sim", color="r", ls="--", alpha=0.5)
+    ax8.hist(rhl_pc_DG, bins=20, histtype="stepfilled", range=(10, 2400), label="DG", color="b", alpha=0.5)
+    ax8.hist(rhl_pc_GC, bins=20, histtype="step", range=(10, 2400), label="GC", color="k")
+    ax8.hist(RHL_PC_SIM, bins=20, histtype="stepfilled", range=(10, 2400), label="Sim", color="r", ls="--", alpha=0.5)
     ax8.set_xlabel(r"$r_{1/2}$[pc]")
     ax8.legend(loc=1)
-    ax8.set_xscale('log')
+    # ax8.set_xscale('log')
     ax8.set_yscale('log')
     ax8.set_title(r'Histogram of $r_{1/2}$ (parsecs)')
 
