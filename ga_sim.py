@@ -58,7 +58,9 @@ from ga_sim import (
     export_results
 )
 parsl.clear()
-parsl.load(condor.get_config())
+parsl.load(condor.get_config('htcondor'))
+parsl.set_stream_logger()
+# parsl.set_file_logger('log_file.txt', level=logging.DEBUG)
 
 # Below, load the JSON config file (change any parameter in case you want) and create folders for results.
 # 
@@ -78,10 +80,10 @@ with open(confg) as fstream:
 os.system("mkdir -p " + param['results_path'])
 
 # Reading reddening files
-hdu_ngp = fits.open("sample_data/SFD_dust_4096_ngp.fits", memmap=True)
+hdu_ngp = fits.open(param['red_maps_path'] + "/SFD_dust_4096_ngp.fits", memmap=True)
 ngp = hdu_ngp[0].data
 
-hdu_sgp = fits.open("sample_data/SFD_dust_4096_sgp.fits", memmap=True)
+hdu_sgp = fits.open(param['red_maps_path'] + "/SFD_dust_4096_sgp.fits", memmap=True)
 sgp = hdu_sgp[0].data
 
 
@@ -92,7 +94,7 @@ sgp = hdu_sgp[0].data
 
 
 download_iso(param['padova_version_code'], param['survey'], 0.0152 * (10 ** param['MH_simulation']),
-             param['age_simulation'], param['av_simulation'], param['file_iso'])
+             param['age_simulation'], param['av_simulation'], param['file_iso'], 5)
 
 
 # Checking age and metalicity of the isochrone. 
@@ -175,7 +177,7 @@ print('Now reading catalog.')
 RA, DEC, MAG_G, MAGERR_G, MAG_R, MAGERR_R = read_cat(
     param['vac_ga'], param['ra_min'], param['ra_max'], param['dec_min'], param['dec_max'],
     param['mmin'], param['mmax'], param['cmin'], param['cmax'],
-    "LSST_DP0_derred.fits", 1.17450, 0.86666, ngp, sgp, param['results_path'],
+    param['survey'] + "_derred.fits", 1.17450, 0.86666, ngp, sgp, param['results_path'],
     param['results_path'] + "/ftp_4096_nest.fits", param['nside3'], param['nside_ftp'])
 
 
@@ -327,8 +329,11 @@ mockcat = join_cat(
 # In[ ]:
 
 print('Now spliting catalog')
+
 os.makedirs(param['hpx_cats_path'], exist_ok=True)
+
 os.makedirs(param['hpx_cats_clean_path'], exist_ok=True)
+
 ipix_cats = split_files(mockcat, 'ra', 'dec',
                         param['nside_ini'], param['hpx_cats_path'])
 
@@ -349,23 +354,32 @@ ipix_cats = split_files(mockcat, 'ra', 'dec',
 
 print('This is the most time consuming part: cleaning the stars from crowding.')
 
+results_from_clear = []
+
 @python_app
 def clean_input_cat_dist_app(i, param):
 
     from ga_sim import clean_input_cat_dist
     
-    clean_input_cat_dist(param['hpx_cats_clean_path'], i, param['ra_str'], param['dec_str'], param['min_dist_arcsec'])
-
+    aaaa = clean_input_cat_dist(param['hpx_cats_clean_path'], i, param['ra_str'], param['dec_str'], param['min_dist_arcsec'], 0.01)
+    return aaaa
 
 
 for i in ipix_cats:
-    clean_input_cat_dist_app(i, param)
+    print(i)
+    results_from_clear.append(clean_input_cat_dist_app(i, param))
 
+outputs = [r.result() for r in results_from_clear]
 
+print('Total of {:d} pixels were cleaned from crowding fields.'.format(np.sum(outputs)))
 # In[ ]:
 
-
 ipix_clean_cats = [i.replace(param['hpx_cats_path'], param['hpx_cats_clean_path']) for i in ipix_cats]
+
+#import time
+
+#while len(glob.glob(param['hpx_cats_clean_path']+ '/*')) < len(ipix_clean_cats):
+#    time.sleep(3)
 
 join_cats_clean(ipix_clean_cats,
                 param['final_cat'], param['ra_str'], param['dec_str'])
@@ -375,139 +389,22 @@ print('Almost done.')
 
 
 sim_clus_feat = write_sim_clus_features(
-    mockcat, param['final_cat'], hp_sample_un, param['nside_ini'], mM, output_path=param['results_path'])
-
-
-# In[ ]:
-
-
-clus_file_results(param['results_path'], "star_clusters_simulated.dat",
-                  sim_clus_feat, 'results/objects.dat')
-
-
-# ## Plots
-# 
-# A few plots to characterize the simulated clusters.
-
-# In[ ]:
-
-
-from ga_sim.plot import (
-    general_plots,
-    plot_ftp,
-    plots_ang_size,
-    plots_ref,
-    plot_err,
-    plot_clusters_clean
+    mockcat,
+    param['final_cat'],
+    hp_sample_un,
+    param['nside_ini'],
+    mM,
+    param['results_path'],
+    param['file_error'],
+    param['file_mask'],
+    param['snr_inner_circle_arcmin'],
+    param['snr_rin_annulus_arcmin'],
+    param['snr_rout_annulus_arcmin']
 )
 
-import tabulate
+clus_file_results(param['star_clusters_simulated'], sim_clus_feat, param['results_path'] + '/objects.dat')
 
+os.system('jupyter nbconvert --execute --to html --EmbedImagesPreprocessor.embed_images=True plots_sim.ipynb')
 
-# The cell below show the complete table of the simulated clusters produced. An improved description of columns is provided:
-# <br>
-# 0-HPX64: Ipix where the cluster is centered (Nested=True, Nside=64);
-# <br>
-# 1-N: Star counts in cluster (before filtering stars from crowding);
-# <br>
-# 2-MV: Absolute magnitude in V band (before filtering stars from crowding);
-# <br>
-# 3-SNR: Poissonian Signal to Noise Ratio of the cluster. This is estimated by star counts within 2 arcmin over
-# <br>
-# root square of star counts within an annulus of rin=10 arcmin and rout = 25 arcmin, normalized
-# <br>
-# by area. This is calculated before filtering stars from crowding;
-# <br>
-# 4-N_f: Star counts of filtering in stars by crowding;
-# <br>
-# 5-MV_f: Absolute magnitude in V band after removing stars by crowding;
-# <br>
-# 6-SNR_f: Signal to Noise Ratio calculated as described in (3) but after removing stars from crowding;
-# <br>
-# 7-L: Galactic longitude (l), in degrees;
-# <br>
-# 8-B: Galactic latitude (b), in degrees;
-# <br>
-# 9-ra: Right Ascension (Equatorial coordinate), in degrees;
-# <br>
-# 10-dec: Declination (Equatorial coordinate), in degrees;
-# <br>
-# 11-r_exp: Exponential radius of cluster, in parsecs;
-# <br>
-# 12-ell: Ellipticity (a - b) / a;
-# <br>
-# 13-pa: Angular position (from North to East), in degrees;
-# <br>
-# 14-mass: Visible mass of cluster (star accounted for mass are stars brighter than the limiting magnitude
-# <br>
-# of the simulation), in Solar masses;
-# <br>
-# 15-dist: distance of the simulated cluster from Sun, in parsecs;
-
-# In[ ]:
-
-'''
-with open(param['star_clusters_simulated']) as f:
-    first_line = f.readline()
-
-table = tabulate.tabulate(np.loadtxt(param['star_clusters_simulated']), tablefmt='html', headers=(first_line[1:].split()))
-table
-
-
-# Plot footprint map to check area.
-
-# In[ ]:
-
-
-general_plots(param['star_clusters_simulated'], param['output_plots'])
-
-
-# In[ ]:
-
-
-# Diretório onde estão os arquivo _clus.dat
-plots_ang_size(param['star_clusters_simulated'], param['results_path'],
-               param['mmin'], param['mmax'], param['cmin'], param['cmax'],
-               param['output_plots'])
-
-'''
-# In[ ]:
-
-
-hpx_ftp = param['results_path'] + "/ftp_4096_nest.fits"
-'''
-plot_ftp(hpx_ftp, param['star_clusters_simulated'],
-         param['final_cat'], param['ra_max'], param['ra_min'], param['dec_min'], param['dec_max'], param['output_plots'])
-'''
-
-# In[ ]:
-
-'''
-plots_ref(FeH_iso, param['output_plots'], param['star_clusters_simulated'])
-'''
-
-# Plotting errors in main magnitude band.
-
-# In[ ]:
-
-'''
-# Plots to analyze the simulated clusters.
-plot_err(mockcat, param['output_plots'])
-'''
-
-# Plot position of stars in clusters comparing filtered in and not filtered stars. The region sampled is the center of the cluster where the crowding is more intense.
-
-# In[ ]:
-
-'''
-plot_clusters_clean(ipix_cats, ipix_clean_cats,
-                    param['nside_ini'], param['ra_str'], param['dec_str'], 0.01, param['output_plots'])
-'''
-
-# The images below are the plots comparing simulations and real clusters.
-
-# In[ ]:
-
-
-export_results('../public_html/gawa_processes/')
+export_results(param['export_path'], param['results_path'])
 

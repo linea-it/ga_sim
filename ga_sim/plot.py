@@ -8,6 +8,77 @@ from astropy.io.fits import getdata
 from pathlib import Path
 from ga_sim.ga_sim import radec2GCdist
 mpl.rcParams["legend.numpoints"] = 1
+from matplotlib.colors import LogNorm
+
+def plot_cmd_clean(ipix_clean_cats, mmin, mmax, cmin, cmax, magg_str, magr_str, GC_str, output_dir):
+
+    tot_clus = len(ipix_clean_cats)
+    
+    j = 0; n_bins=100
+    cmap = plt.cm.inferno    
+
+    for i in range(tot_clus): #len_ipix):
+    
+        # ax[0, 1].set_yticks([])
+        # ax[0, 2].set_yticks([])
+
+        ipix = (ipix_clean_cats[i].split('/')[-1]).split('.')[0]
+
+        data = fits.getdata(ipix_clean_cats[i])
+        GC = data[GC_str]
+        magg = data[magg_str]
+        magr = data[magr_str]
+
+        f, ((ax1, ax2, ax3)) = plt.subplots(1, 3, figsize=(12, 6), dpi=150)
+        
+        H, xedges, yedges = np.histogram2d(magg-magr, magg, bins=n_bins, range=[[cmin, cmax], [mmin, mmax]])
+        ax1.set_title('CMD Ipix {}'.format(ipix))
+        ax1.set_xlim([cmin, cmax])
+        ax1.set_ylim([mmax, mmin])
+        ax1.set_xlabel('g - r')
+        ax1.set_ylabel('g')
+        ax1.grid(True, lw=0.2)
+        im1 = ax1.imshow(H.T, extent=[cmin, cmax, mmax, mmin], aspect='auto', interpolation='None',
+                         cmap=cmap, norm=LogNorm())
+        cbaxes = f.add_axes([0.33, 0.095, 0.015, 0.84])
+        cbar = f.colorbar(im1, cax=cbaxes, cmap=cmap, orientation='vertical')
+
+        bkg = (GC == 0)
+        H, xedges, yedges = np.histogram2d(magg[bkg]-magr[bkg], magg[bkg], bins=n_bins, range=[[cmin, cmax], [mmin, mmax]])
+        ax2.set_title('CMD Ipix {} Bkg stars'.format(ipix))
+        ax2.set_xlim([cmin, cmax])
+        ax2.set_ylim([mmax, mmin])
+        ax2.set_xlabel('g - r')
+        ax2.set_yticks([])
+        ax2.grid(True, lw=0.2)
+        im2 = ax2.imshow(H.T, extent=[cmin, cmax, mmax, mmin], aspect='auto', interpolation='None',
+                         cmap=cmap, norm=LogNorm())
+        cbaxes = f.add_axes([0.66, 0.095, 0.015, 0.84])
+        cbar = f.colorbar(im2, cax=cbaxes, cmap=cmap, orientation='vertical')
+
+
+        cls = (GC == 1)
+        H, xedges, yedges = np.histogram2d(magg[cls]-magr[cls], magg[cls], bins=n_bins, range=[[cmin, cmax], [mmin, mmax]])
+        ax3.set_title('CMD Ipix {} Cluster stars'.format(ipix))
+        ax3.set_xlim([cmin, cmax])
+        ax3.set_ylim([mmax, mmin])
+        ax3.set_yticks([])
+        ax3.set_xlabel('g - r')
+        ax3.grid(True, lw=0.2)
+        im3 = ax3.imshow(H.T, extent=[cmin, cmax, mmax, mmin], aspect='auto', interpolation='None',
+                         cmap=cmap)
+
+        cbaxes = f.add_axes([0.99, 0.095, 0.015, 0.84])
+        cbar = f.colorbar(im3, cax=cbaxes, cmap=cmap, orientation='vertical')
+        #cbar.ax1.set_xticklabels(np.linspace(0., np.max(H), 5),rotation=0)
+        # plt.tight_layout()
+        plt.subplots_adjust(wspace=0.2)
+        plt.show()
+
+
+    #plt.savefig(output_dir + '/CMD_ipix.png')
+    #plt.show()
+    #plt.close()
 
 
 def read_real_cat(cat_DG = "catalogs/objects_in_ref.dat", cat_GC = "catalogs/Harris_updated.dat"):
@@ -61,6 +132,8 @@ def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half
     ipix = [int((i.split('/')[-1]).split('.')[0]) for i in ipix_cats]
 
     ra_cen, dec_cen = hp.pix2ang(nside, ipix, nest=True, lonlat=True)
+    tot_clus = len(ipix)
+    '''
     tot_clus = 0
     for i in range(len_ipix):
         data = fits.getdata(ipix_cats[i])
@@ -72,8 +145,9 @@ def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half
         if len(RA_orig[(RA_orig < ra_cen[i] + half_size_plot_ra) & (RA_orig > ra_cen[i] - half_size_plot_ra) &
                        (DEC_orig < dec_cen[i] + half_size_plot_dec) & (DEC_orig > dec_cen[i] - half_size_plot_dec)]) > 10.:
             tot_clus += 1
-    # fig, ax = plt.subplots(tot_clus, 3, figsize=(6, 2*tot_clus))
-    fig, ax = plt.subplots(10, 3, figsize=(18, 60))
+    '''
+    fig, ax = plt.subplots(tot_clus, 3, figsize=(15, 5*tot_clus))
+    # fig, ax = plt.subplots(10, 3, figsize=(18, 60))
     
     j = 0
     
@@ -82,10 +156,13 @@ def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half
             ax[i, k].set_xticks([])
             ax[i, k].set_yticks([])
 
-    for i in range(10): #len_ipix):
+    for i in range(len_ipix):
         data = fits.getdata(ipix_cats[i])
         RA_orig = data[ra_str]
         DEC_orig = data[dec_str]
+        
+        half_size_plot_dec = half_size_plot
+        half_size_plot_ra = half_size_plot / np.cos(np.deg2rad(dec_cen[i]))
 
         if len(RA_orig[(RA_orig < ra_cen[i] + half_size_plot_ra) & (RA_orig > ra_cen[i] - half_size_plot_ra) &
                        (DEC_orig < dec_cen[i] + half_size_plot_dec) & (DEC_orig > dec_cen[i] - half_size_plot_dec)]) > 10.:

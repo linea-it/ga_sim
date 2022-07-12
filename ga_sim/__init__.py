@@ -31,5 +31,6 @@ from ga_sim.plot import (
     plot_ftp,
     plots_ang_size,
     plot_err,
+    plot_cmd_clean
 )
 

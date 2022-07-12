@@ -1,4 +1,4 @@
-# -*- coding: autopep8 -*-
+# -*- coding: utf-8 -*-
 import os
 import astropy.coordinates as coord
 import astropy.io.fits as fits
@@ -15,7 +15,7 @@ from pathlib import Path
 from itertools import compress
 
 
-def export_results(proc_dir):
+def export_results(proc_dir, res_path):
     """This function exports the results of the run to a directory called proc_dir,
     creating a subfolder with number following the last process in that folder.
 
@@ -30,15 +30,15 @@ def export_results(proc_dir):
     os.system('mkdir -p ' + new_dir)
     os.system('mkdir -p ' + new_dir + '/detections')
     os.system('mkdir -p ' + new_dir + '/simulations')
-    os.system('mkdir -p ' + new_dir + '/simulations/sample_data')
-    os.system('cp sample_data/*.dat' + ' ' +
-              new_dir + '/simulations/sample_data/')
-    os.system('cp sample_data/*.asc' + ' ' +
-              new_dir + '/simulations/sample_data/')
-    dirs = glob.glob('results/*/')
+    #os.system('mkdir -p ' + new_dir + '/simulations/sample_data')
+    # os.system('cp sample_data/*.dat' + ' ' +
+    #          new_dir + '/simulations/sample_data/')
+    #os.system('cp sample_data/*.asc' + ' ' +
+    #          new_dir + '/simulations/sample_data/')
+    dirs = glob.glob(res_path + '/*/')
     for i in dirs:
         os.system('cp -r ' + i + ' ' + new_dir + '/simulations/')
-    files = glob.glob('results/*.*')
+    files = glob.glob(res_path + '/*.*')
     for i in files:
         os.system('cp ' + i + ' ' + new_dir + '/simulations/')
     files2 = glob.glob('*.*')
@@ -83,7 +83,7 @@ def king_prof(N_stars, rc, rt):
     return np.multiply(rad_star, rt)
 
 
-def clean_input_cat_dist(dir_name, file_name, ra_str, dec_str, max_dist_arcsec):
+def clean_input_cat_dist(dir_name, file_name, ra_str, dec_str, max_dist_arcsec, init_dist):
     """ This function removes stars closer than max_dist_arcsec. That is specially significant to
     stellar clusters, where the stellar crowding in images creates a single
     object in cluster's center, but many star in the periphery.
@@ -115,13 +115,17 @@ def clean_input_cat_dist(dir_name, file_name, ra_str, dec_str, max_dist_arcsec):
     DEC = data[dec_str]
 
     for i, j in enumerate(RA):
-        length = 0.1
-        cond = (RA < j + length) & (RA > j - length) & (DEC <
-                                                        DEC[i] + length) & (DEC > DEC[i] - length)
+        length_dec = init_dist
+        length_ra = init_dist / np.cos(np.deg2rad(DEC[i]))
+        cond = (RA < j + length_ra) & (RA > j - length_ra) & (DEC <
+                                                        DEC[i] + length_dec) & (DEC > DEC[i] - length_dec)
         RA_ = RA[cond]
         DEC_ = DEC[cond]
         dist = dist_ang(RA_, DEC_, j, DEC[i])
-        if (sorted(set(dist))[1] > max_dist_arcsec / 3600):
+        if len(dist) > 1:
+            if (sorted(set(dist))[1] > max_dist_arcsec / 3600):
+                clean_idx.append(i)
+        else:
             clean_idx.append(i)
 
     data_clean = np.array([data[:][i] for i in clean_idx])
@@ -135,6 +139,8 @@ def clean_input_cat_dist(dir_name, file_name, ra_str, dec_str, max_dist_arcsec):
     tbhdu = fits.BinTableHDU.from_columns(cols)
 
     tbhdu.writeto(output_file, overwrite=True)
+
+    return 1
 
 
 def exp_prof(N_stars, rexp, max_length=10):
@@ -318,7 +324,7 @@ def clean_input_cat(file_name, ra_str, dec_str, nside):
     tbhdu.writeto(output_file, overwrite=True)
 
 
-def clus_file_results(results_path, out_file, sim_clus_feat, objects_filepath):
+def clus_file_results(out_file, sim_clus_feat, objects_filepath):
     """This function uses the join command to join a file with initial features
     of the simulated clusters to a file with number of stars and absolute
     magnitude since the last file is created after the simulations.
@@ -335,7 +341,7 @@ def clus_file_results(results_path, out_file, sim_clus_feat, objects_filepath):
         Name of file with n_stars and absolute magnitude.
     """
 
-    star_clusters_simulated = Path(results_path, out_file)
+    star_clusters_simulated = Path(out_file)
     with open(star_clusters_simulated, 'w') as fff:
         print('#0-HPX64 1-N 2-MV 3-SNR 4-N_f 5-MV_f 6-SNR_f 7-L 8-B 9-ra 10-dec 11-r_exp 12-ell 13-pa 14-mass 15-dist', file=fff)
     os.system('join --nocheck-order %s %s >> %s' %
@@ -637,8 +643,9 @@ def download_iso(version, phot_system, Z, age, av_ext, out_file, iter_max):
         output.
     """
 
-    len_col = 0
+    # os.system('mkdir -p ' + out_file.split('/')[0])
     count = 0
+    file_is_empty = True
 
     main_pars = "track_parsec=parsec_CAF09_v1.2S&track_colibri=parsec_CAF09_v1.2S_S_LMC_08_web&track_postagb=" + "no&n_inTPC=10&eta_reimers=0.2&kind_interp=1&kind_postagb=-1&kind_tpagb=-1&kind_pulsecycle=" + \
         "0&kind_postagb=-1&kind_mag=2&kind_dust=0&extinction_coeff=constant&extinction_curve=" + \
@@ -648,7 +655,8 @@ def download_iso(version, phot_system, Z, age, av_ext, out_file, iter_max):
     if phot_system == 'des':
         phot_system = 'decam'
 
-    while (len_col < 10) | (count < iter_max):
+    while (file_is_empty)&(count < iter_max):
+        print('Iteration {:d} to download PARSEC isochrone.'.format(count + 1))
         try:
             os.system(("wget -o lixo -Otmp --post-data='submit_form=Submit&cmd_version={}&photsys_file=tab_mag_odfnew/tab_mag_{}.dat&photsys_version=YBC&output_kind=0&output_evstage=1&isoc_isagelog=0&isoc_agelow={:.2e}&isoc_ageupp={:.2e}&isod_dage=0&isoc_ismetlog=0&isoc_zlow={:.6f}&isoc_zupp={:.6f}&isod_dz=0&extinction_av={:.3f}&{}' {}/cgi-bin/cmd_{}".format(
                 version, phot_system, age, age, Z, Z, av_ext, main_pars, webserver, version)).replace('e+', 'e'))
@@ -664,7 +672,7 @@ def download_iso(version, phot_system, Z, age, av_ext, out_file, iter_max):
                   webserver, out_file_tmp))
         os.system("mv {} {}".format(out_file_tmp, out_file))
 
-        len_col = len(np.loadtxt(out_file, usecols=(1), unpack=True))
+        file_is_empty = (os.stat(out_file).st_size == 0)
 
         count += 1
 
@@ -1193,6 +1201,7 @@ def faker(
                     star[ii, 8],
                     file=out_file,
                 )
+    out_file.close()
 
 
 def join_cat(
@@ -1264,52 +1273,42 @@ def join_cat(
     GC = np.zeros(len(RA), dtype=int)
 
     for j in range(len(hp_sample_un)):
-        try:
-            # input_path = Diretório onde se encontram os arquivos _clus.
-            filepath = Path(input_path, "%s_clus.dat" % hp_sample_un[j])
-            (
-                RA_clus,
-                DEC_clus,
-                MAG1_clus,
-                MAGERR1_clus,
-                MAG2_clus,
-                MAGERR2_clus,
-            ) = np.loadtxt(
-                filepath,
-                usecols=(0, 1, 2, 3, 4, 5),
-                unpack=True,
-            )
+        #try:
+        # input_path = Diretório onde se encontram os arquivos _clus.
+        filepath = Path(input_path, "%s_clus.dat" % hp_sample_un[j])
+        
+        RA_clus, DEC_clus,  MAG1_clus, MAGERR1_clus, MAG2_clus, MAGERR2_clus = np.loadtxt(filepath, usecols=(0, 1, 2, 3, 4, 5), unpack=True)
 
-            pr_limit = (
-                (RA_clus >= ra_min)
-                & (RA_clus <= ra_max)
-                & (DEC_clus >= dec_min)
-                & (DEC_clus <= dec_max)
-                & (MAG1_clus <= mmax)
-                & (MAG1_clus >= mmin)
-                & (MAG1_clus - MAG2_clus >= cmin)
-                & (MAG1_clus - MAG2_clus <= cmax)
-            )
+        pr_limit = (
+            (RA_clus >= ra_min)
+            & (RA_clus <= ra_max)
+            & (DEC_clus >= dec_min)
+            & (DEC_clus <= dec_max)
+            & (MAG1_clus <= mmax)
+            & (MAG1_clus >= mmin)
+            & (MAG1_clus - MAG2_clus >= cmin)
+            & (MAG1_clus - MAG2_clus <= cmax)
+        )
 
-            RA_clus, DEC_clus, MAG1_clus, MAG2_clus, MAGERR1_clus, MAGERR2_clus = (
-                RA_clus[pr_limit],
-                DEC_clus[pr_limit],
-                MAG1_clus[pr_limit],
-                MAG2_clus[pr_limit],
-                MAGERR1_clus[pr_limit],
-                MAGERR2_clus[pr_limit],
-            )
+        RA_clus, DEC_clus, MAG1_clus, MAG2_clus, MAGERR1_clus, MAGERR2_clus = (
+            RA_clus[pr_limit],
+            DEC_clus[pr_limit],
+            MAG1_clus[pr_limit],
+            MAG2_clus[pr_limit],
+            MAGERR1_clus[pr_limit],
+            MAGERR2_clus[pr_limit],
+        )
 
-            GC_clus = np.ones(len(RA_clus), dtype=int)
-            GC = np.concatenate((GC, GC_clus), axis=0)
-            RA = np.concatenate((RA, RA_clus), axis=0)
-            DEC = np.concatenate((DEC, DEC_clus), axis=0)
-            MAG_G = np.concatenate((MAG_G, MAG1_clus), axis=0)
-            MAG_R = np.concatenate((MAG_R, MAG2_clus), axis=0)
-            MAGERR_G = np.concatenate((MAGERR_G, MAGERR1_clus), axis=0)
-            MAGERR_R = np.concatenate((MAGERR_R, MAGERR2_clus), axis=0)
-        except:
-            print("zero stars in ", hp_sample_un[j])
+        GC_clus = np.ones(len(RA_clus), dtype=int)
+        GC = np.concatenate((GC, GC_clus), axis=0)
+        RA = np.concatenate((RA, RA_clus), axis=0)
+        DEC = np.concatenate((DEC, DEC_clus), axis=0)
+        MAG_G = np.concatenate((MAG_G, MAG1_clus), axis=0)
+        MAG_R = np.concatenate((MAG_R, MAG2_clus), axis=0)
+        MAGERR_G = np.concatenate((MAGERR_G, MAGERR1_clus), axis=0)
+        MAGERR_R = np.concatenate((MAGERR_R, MAGERR2_clus), axis=0)
+        #except:
+        #    print("zero stars in ", hp_sample_un[j])
 
     filepath = Path(output_path, "%s_mockcat_for_detection.fits" % survey)
 
@@ -1340,6 +1339,8 @@ def snr_estimate(
     inner_circle,
     rin_annulus,
     rout_annulus,
+    error_file,
+    mask_file
 ):
     """
     Estimate the SNR (Signal to Noise Ratio) of the simulated cluster in density-number.
@@ -1377,7 +1378,7 @@ def snr_estimate(
     ra_center, dec_center = hp.pix2ang(nside1, PIX_sim, nest=True, lonlat=True)
     # loading data from isochronal mask
     gr_mask, g_mask, kind_mask = np.loadtxt(
-        "sample_data/gr_g_model_D0.asc", usecols=(0, 1, 2), unpack=True
+        mask_file, usecols=(0, 1, 2), unpack=True
     )
     g_mask += mM_
 
@@ -1387,9 +1388,9 @@ def snr_estimate(
     # e de release a release. Talvez fazer pastas com o nome do survey e colocar
     # eles apenas como mag1_err e mag2_err fosse melhor. ou informar no set de
     # parametros.
-    _g, _gerr = np.loadtxt("sample_data/errors_Y6.dat",
+    _g, _gerr = np.loadtxt(error_file,
                            usecols=(0, 1), unpack=True)
-    _r, _rerr = np.loadtxt("sample_data/errors_Y6.dat",
+    _r, _rerr = np.loadtxt(error_file,
                            usecols=(0, 2), unpack=True)
 
     for i in range(len(gr_mask)):
@@ -1426,8 +1427,17 @@ def snr_estimate(
 
 
 def write_sim_clus_features(
-    mockcat, mockcat_clean, hp_sample_un, nside_ini, mM, output_path=Path(
-        "results")
+    mockcat,
+    mockcat_clean,
+    hp_sample_un,
+    nside_ini,
+    mM,
+    output_path,
+    file_error,
+    file_mask,
+    snr_inner_circle_arcmin,
+    snr_rin_annulus_arcmin,
+    snr_rout_annulus_arcmin
 ):
     """
     Write a few features of the clusters in a file called 'N_stars,dat'.
@@ -1485,9 +1495,12 @@ def write_sim_clus_features(
                 hp_sample_un[j],
                 nside_ini,
                 mM[j],
-                2.0 / 60,
-                10.0 / 60,
-                25.0 / 60)
+                snr_inner_circle_arcmin / 60.,
+                snr_rin_annulus_arcmin / 60.,
+                snr_rout_annulus_arcmin / 60.,
+                file_error,
+                file_mask
+                )
             SNR_clean = snr_estimate(
                 RA__clean,
                 DEC__clean,
@@ -1496,9 +1509,12 @@ def write_sim_clus_features(
                 hp_sample_un[j],
                 nside_ini,
                 mM[j],
-                2.0 / 60,
-                10.0 / 60,
-                25.0 / 60)
+                snr_inner_circle_arcmin / 60.,
+                snr_rin_annulus_arcmin / 60.,
+                snr_rout_annulus_arcmin / 60.,
+                file_error,
+                file_mask
+                )
 
             cond_clus = (cond) & (GC == 1)
             cond_clus_clean = (cond_clean) & (GC_clean == 1)
