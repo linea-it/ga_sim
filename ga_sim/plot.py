@@ -40,7 +40,7 @@ def plot_cmd_clean(ipix_clean_cats, mmin, mmax, cmin, cmax, magg_str, magr_str, 
         ax1.grid(True, lw=0.2)
         im1 = ax1.imshow(H.T, extent=[cmin, cmax, mmax, mmin], aspect='auto', interpolation='None',
                          cmap=cmap, norm=LogNorm())
-        cbaxes = f.add_axes([0.33, 0.095, 0.015, 0.84])
+        cbaxes = f.add_axes([0.355, 0.126, 0.01, 0.750])
         cbar = f.colorbar(im1, cax=cbaxes, cmap=cmap, orientation='vertical')
 
         bkg = (GC == 0)
@@ -53,7 +53,7 @@ def plot_cmd_clean(ipix_clean_cats, mmin, mmax, cmin, cmax, magg_str, magr_str, 
         ax2.grid(True, lw=0.2)
         im2 = ax2.imshow(H.T, extent=[cmin, cmax, mmax, mmin], aspect='auto', interpolation='None',
                          cmap=cmap, norm=LogNorm())
-        cbaxes = f.add_axes([0.66, 0.095, 0.015, 0.84])
+        cbaxes = f.add_axes([0.6275, 0.126, 0.01, 0.750])
         cbar = f.colorbar(im2, cax=cbaxes, cmap=cmap, orientation='vertical')
 
 
@@ -68,7 +68,7 @@ def plot_cmd_clean(ipix_clean_cats, mmin, mmax, cmin, cmax, magg_str, magr_str, 
         im3 = ax3.imshow(H.T, extent=[cmin, cmax, mmax, mmin], aspect='auto', interpolation='None',
                          cmap=cmap)
 
-        cbaxes = f.add_axes([0.99, 0.095, 0.015, 0.84])
+        cbaxes = f.add_axes([0.90, 0.126, 0.01, 0.750])
         cbar = f.colorbar(im3, cax=cbaxes, cmap=cmap, orientation='vertical')
         #cbar.ax1.set_xticklabels(np.linspace(0., np.max(H), 5),rotation=0)
         # plt.tight_layout()
@@ -146,17 +146,9 @@ def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half
                        (DEC_orig < dec_cen[i] + half_size_plot_dec) & (DEC_orig > dec_cen[i] - half_size_plot_dec)]) > 10.:
             tot_clus += 1
     '''
-    fig, ax = plt.subplots(tot_clus, 3, figsize=(15, 5*tot_clus))
-    # fig, ax = plt.subplots(10, 3, figsize=(18, 60))
-    
-    j = 0
-    
-    for i in range(len(ax[:,0])):
-        for k in range(len(ax[0, :])):
-            ax[i, k].set_xticks([])
-            ax[i, k].set_yticks([])
 
     for i in range(len_ipix):
+        
         data = fits.getdata(ipix_cats[i])
         RA_orig = data[ra_str]
         DEC_orig = data[dec_str]
@@ -166,61 +158,65 @@ def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half
 
         if len(RA_orig[(RA_orig < ra_cen[i] + half_size_plot_ra) & (RA_orig > ra_cen[i] - half_size_plot_ra) &
                        (DEC_orig < dec_cen[i] + half_size_plot_dec) & (DEC_orig > dec_cen[i] - half_size_plot_dec)]) > 10.:
-            line = j
+            
+            fig, ax = plt.subplots(1, 3, figsize=(18, 6), dpi=150)
+  
+            ax[1].set_yticks([])
+            ax[2].set_yticks([])
+
             data = fits.getdata(ipix_clean_cats[i])
             RA = data[ra_str]
             DEC = data[dec_str]
             col = 0
-            ax[line, col].scatter(
+            ax[col].scatter(
                 RA_orig, DEC_orig, edgecolor='b', color='None', s=20, label='All stars')
-            ax[line, col].set_xlim(
+            ax[col].set_xlim(
                 [ra_cen[i] + half_size_plot_ra, ra_cen[i] - half_size_plot_ra])
-            ax[line, col].set_ylim(
+            ax[col].set_ylim(
                 [dec_cen[i] - half_size_plot_dec, dec_cen[i] + half_size_plot_dec])
-            ax[line, col].set_title('Ipix='+str(ipix[i]), y= 0.9, pad=8, backgroundcolor='w') #{x=ra_cen[i], y=dec_cen[i], pad=8)
-            ax[line, col].legend(loc=3)
-            ax[line, col].scatter(
+            ax[col].set_title('Ipix='+str(ipix[i]), y= 0.9, pad=8, backgroundcolor='w') #{x=ra_cen[i], y=dec_cen[i], pad=8)
+            ax[col].legend(loc=3)
+            ax[col].scatter(
                 ra_cen[i], dec_cen[i], color='k', s=100, marker='+', label='Cluster center')
 
             col = 1
-            ax[line, col].scatter(RA, DEC, edgecolor='b', color='None', s=20, label='Filtered stars')
-            ax[line, col].set_xlim(
+            ax[col].scatter(RA, DEC, edgecolor='b', color='None', s=20, label='Filtered stars')
+            ax[col].set_xlim(
                 [ra_cen[i] + half_size_plot_ra, ra_cen[i] - half_size_plot_ra])
-            ax[line, col].set_ylim(
+            ax[col].set_ylim(
                 [dec_cen[i] - half_size_plot_dec, dec_cen[i] + half_size_plot_dec])
-            ax[line, col].set_title('Ipix='+str(ipix[i]), y= 0.9, pad=8, backgroundcolor='w') #{x=ra_cen[i], y=dec_cen[i], pad=8)
-            ax[line, col].legend(loc=3)
-            ax[line, col].scatter(
+            ax[col].set_title('Ipix='+str(ipix[i]), y= 0.9, pad=8, backgroundcolor='w') #{x=ra_cen[i], y=dec_cen[i], pad=8)
+            ax[col].legend(loc=3)
+            ax[col].scatter(
                 ra_cen[i], dec_cen[i], color='k', s=100, marker='+', label='Cluster center')
-            ax[line, col].text(
-                ra_cen[i], dec_cen[i] - 0.96 * half_size_plot_dec, '{:d} arcsec'.format(int(st_line_arcsec)), fontsize=8.)
-            ax[line, col].plot(
+            ax[col].text(
+                ra_cen[i] - half_size_plot_ra + 2. * st_line_arcsec / (np.cos(np.deg2rad(dec_cen[i]))*3600), dec_cen[i] - 0.96 * half_size_plot_dec, '{:d} arcsec'.format(int(st_line_arcsec)), fontsize=8.)
+            ax[col].plot(
                 [ra_cen[i] - half_size_plot_ra + st_line_arcsec / (np.cos(np.deg2rad(dec_cen[i]))*3600),
                  ra_cen[i] - half_size_plot_ra + 2. * st_line_arcsec / (np.cos(np.deg2rad(dec_cen[i]))*3600)],
                 [dec_cen[i] - 0.9 * half_size_plot_dec, dec_cen[i] - 0.9 * half_size_plot_dec], color='k', lw=1)
             
             col = 2
-            ax[line, col].scatter(
+            ax[col].scatter(
                 RA_orig, DEC_orig, edgecolor='b', color='None', s=20, label='All stars')
-            ax[line, col].set_xlim(
+            ax[col].set_xlim(
                 [ra_cen[i] + half_size_plot, ra_cen[i] - half_size_plot])
-            ax[line, col].set_ylim(
+            ax[col].set_ylim(
                 [dec_cen[i] - half_size_plot, dec_cen[i] + half_size_plot])
-            ax[line, col].scatter(RA, DEC, color='r', s=2, label='Filtered stars')
-            ax[line, col].set_xlim(
+            ax[col].scatter(RA, DEC, color='r', s=2, label='Filtered stars')
+            ax[col].set_xlim(
                 [ra_cen[i] + half_size_plot, ra_cen[i] - half_size_plot])
-            ax[line, col].set_ylim(
+            ax[col].set_ylim(
                 [dec_cen[i] - half_size_plot, dec_cen[i] + half_size_plot])
-            ax[line, col].set_title('Ipix='+str(ipix[i]), y= 0.9, pad=8, backgroundcolor='w') #{x=ra_cen[i], y=dec_cen[i], pad=8)
-            ax[line, col].legend(loc=3)
-            ax[line, col].scatter(
+            ax[col].set_title('Ipix='+str(ipix[i]), y= 0.9, pad=8, backgroundcolor='w') #{x=ra_cen[i], y=dec_cen[i], pad=8)
+            ax[col].legend(loc=3)
+            ax[col].scatter(
                 ra_cen[i], dec_cen[i], color='k', s=100, marker='+', label='Cluster center')
 
-            j += 1
-    plt.subplots_adjust(wspace=0, hspace=0)
-    plt.savefig(output_dir + '/clusters_with_and_without_crowded_stars.png')
-    plt.show()
-    plt.close()
+            plt.subplots_adjust(wspace=0, hspace=0)
+            # plt.savefig(output_dir + '/clusters_with_and_without_crowded_stars.png')
+            plt.show()
+            # plt.close()
 
     
 def general_plots(star_clusters_simulated, output_dir):
@@ -300,6 +296,8 @@ def plot_ftp(
     """Plot footprint map to check area."""
     nside = 4096
     npix = hp.nside2npix(nside)
+    
+    cmap = plt.cm.inferno_r
 
     # data = getdata("ftp_4096_nest.fits")
     data = getdata(ftp_fits)
@@ -318,31 +316,26 @@ def plot_ftp(
         hold=True,
         cbar=False,
         title="",
+        cmap=cmap,
         return_projected_map=True,
     )
     plt.clf()
 
-    # TODO: Verificar variaveis carregadas e não usadas
-    PIX_sim, NSTARS, MAG_ABS_V, RA, DEC, R_EXP, ELL, PA, MASS, DIST = np.loadtxt(
-        star_clusters_simulated,
-        usecols=(0, 1, 2, 9, 10, 11, 12, 13, 14, 15),
-        unpack=True,
-    )
-    for i in range(len(RA)):
-        hp.projtext(
-            RA[i],
-            DEC[i],
-            str(PIX_sim[i]),
-            lonlat=True,
-            fontsize=10,
-            c="k",
-            horizontalalignment="center",
-        )
-        hp.projscatter(RA[i], DEC[i], lonlat=True, coord="C", s=1.0, color="k", lw=0.1)
+    RA, DEC = np.loadtxt(star_clusters_simulated, usecols=(9, 10), unpack=True)
+    #for i in range(len(RA)):
+    #    hp.projtext(
+    #        RA[i],
+    #        DEC[i],
+    #        str(PIX_sim[i]),
+    #        lonlat=True,
+    #        fontsize=10,
+    #        c="k",
+    #        horizontalalignment="center",
+    #    )
+    #    hp.projscatter(RA[i], DEC[i], lonlat=True, coord="C", s=1.0, color="k", lw=0.1)
 
-    # data = getdata(survey + "_mockcat_for_detection.fits")
-    data = getdata(mockcat)
-    RA_star, DEC_star = data["RA"], data["DEC"]
+    # data = getdata(mockcat)
+    # RA_star, DEC_star = data["RA"], data["DEC"]
     fig, axs = plt.subplots(1, 1, figsize=(10, 10))
     axs.imshow(
         test,
@@ -350,18 +343,18 @@ def plot_ftp(
         extent=(ra_max, ra_min, dec_min, dec_max),
         interpolation="none",
     )
-    axs.scatter(RA, DEC, s=0.01, c="k", marker="s", label="Simulated clusters")
-    axs.scatter(RA_star, DEC_star, s=0.01, c="k", marker="o", label="Simulated stars")
+    axs.scatter(RA, DEC, s=20., c="k", marker="s", label="Simulated clusters")
+    # axs.scatter(RA_star, DEC_star, s=0.01, c="k", marker="o", label="Simulated stars")
     axs.set_xlim([ra_max, ra_min])
     axs.set_ylim([dec_min, dec_max])
     axs.set_xlabel("RA (deg)")
     axs.set_ylabel("DEC (deg)")
-    axs.set_title("Distribution of stars on Footprint Map")
+    axs.set_title("2D Histogram of stars of stars on Footprint Map")
     axs.grid()
     plt.legend(loc=1)
-    plt.savefig(output_dir + '/ftp.png')
+    # plt.savefig(output_dir + '/ftp.png')
     plt.show()
-    plt.close()
+    # plt.close()
 
 
 def plots_ang_size(
