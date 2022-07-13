@@ -222,7 +222,7 @@ RA_pix, DEC_pix, r_exp, ell, pa, dist, mass, mM, hp_sample_un = gen_clus_file(
 # In[ ]:
 
 
-mag1_, err1_, err2_ = read_error(param['file_error'], 0.015, 0.015)
+mag1_, err1_, err2_ = read_error(param['file_error'], 0.000, 0.000)
 
 
 # Now simulating the clusters.

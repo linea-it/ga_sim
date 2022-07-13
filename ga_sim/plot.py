@@ -178,6 +178,8 @@ def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half
             ax[col].legend(loc=3)
             ax[col].scatter(
                 ra_cen[i], dec_cen[i], color='k', s=100, marker='+', label='Cluster center')
+            ax[col].set_xlabel('RA (deg)')
+            ax[col].set_ylabel('DEC (deg)')
 
             col = 1
             ax[col].scatter(RA, DEC, edgecolor='b', color='None', s=20, label='Filtered stars')
@@ -191,12 +193,14 @@ def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half
                 ra_cen[i], dec_cen[i], color='k', s=100, marker='+', label='Cluster center')
             ax[col].text(
                 ra_cen[i] - half_size_plot_ra + 2. * st_line_arcsec / (np.cos(np.deg2rad(dec_cen[i]))*3600), dec_cen[i] - 0.96 * half_size_plot_dec, '{:d} arcsec'.format(int(st_line_arcsec)), fontsize=8.)
+            ax[col].set_xlabel('RA (deg)')
             ax[col].plot(
                 [ra_cen[i] - half_size_plot_ra + st_line_arcsec / (np.cos(np.deg2rad(dec_cen[i]))*3600),
                  ra_cen[i] - half_size_plot_ra + 2. * st_line_arcsec / (np.cos(np.deg2rad(dec_cen[i]))*3600)],
                 [dec_cen[i] - 0.9 * half_size_plot_dec, dec_cen[i] - 0.9 * half_size_plot_dec], color='k', lw=1)
             
             col = 2
+            ax[col].set_xlabel('RA (deg)')
             ax[col].scatter(
                 RA_orig, DEC_orig, edgecolor='b', color='None', s=20, label='All stars')
             ax[col].set_xlim(
