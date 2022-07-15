@@ -209,7 +209,7 @@ def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half
                 [dec_cen[i] - half_size_plot, dec_cen[i] + half_size_plot])
             ax[col].scatter(RA, DEC, color='r', s=2, label='Filtered stars')
             ax[col].set_xlim(
-                [ra_cen[i] + half_size_plot, ra_cen[i] - half_size_plot])
+                [ra_cen[i] + half_size_plot_ra, ra_cen[i] - half_size_plot_ra])
             ax[col].set_ylim(
                 [dec_cen[i] - half_size_plot, dec_cen[i] + half_size_plot])
             ax[col].set_title('Ipix='+str(ipix[i]), y= 0.9, pad=8, backgroundcolor='w') #{x=ra_cen[i], y=dec_cen[i], pad=8)
