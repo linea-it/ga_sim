@@ -25,8 +25,9 @@ def export_results(proc_dir, res_path, copy_path):
         Directory where the subfolder with all the results will be copied to.
     """
 
-    dir_list = glob.glob(proc_dir + '*')
-    new_dir = proc_dir + "{0:05d}".format(int(dir_list[-1].split('/')[-1]) + 1)
+    dir_list = sorted(glob.glob(proc_dir + '/*'))
+    new_dir = proc_dir + "/{0:05d}".format(int(dir_list[-1].split('/')[-1]) + 1)
+    print(new_dir)
     os.system('mkdir -p ' + new_dir)
     os.system('mkdir -p ' + new_dir + '/detections')
     os.system('mkdir -p ' + new_dir + '/simulations')
@@ -44,10 +45,11 @@ def export_results(proc_dir, res_path, copy_path):
     files2 = glob.glob('*.*')
     for i in files2:
         os.system('cp ' + i + ' ' + new_dir + '/simulations/')
-    new_dir2 = copy_path + "{0:05d}".format(int(dir_list[-1].split('/')[-1]) + 1)
+    new_dir2 = copy_path + "/{0:05d}".format(int(dir_list[-1].split('/')[-1]) + 1)
     os.system('mkdir -p ' + new_dir2)
+    os.system('mkdir -p ' + new_dir2 + '/simulations')
     html_file = glob.glob('*.html')
-    os.system('cp ' + html_file + ' ' + new_dir2 + '/simulations/main.html')
+    os.system('cp ' + html_file[0] + ' ' + new_dir2 + '/simulations/index.html')
 
 
 def king_prof(N_stars, rc, rt):
