@@ -15,7 +15,7 @@ from pathlib import Path
 from itertools import compress
 
 
-def export_results(proc_dir, res_path):
+def export_results(proc_dir, res_path, copy_path):
     """This function exports the results of the run to a directory called proc_dir,
     creating a subfolder with number following the last process in that folder.
 
@@ -44,6 +44,10 @@ def export_results(proc_dir, res_path):
     files2 = glob.glob('*.*')
     for i in files2:
         os.system('cp ' + i + ' ' + new_dir + '/simulations/')
+    new_dir2 = copy_path + "{0:05d}".format(int(dir_list[-1].split('/')[-1]) + 1)
+    os.system('mkdir -p ' + new_dir2)
+    html_file = glob.glob('*.html')
+    os.system('cp ' + html_file + ' ' + new_dir2 + '/simulations/main.html')
 
 
 def king_prof(N_stars, rc, rt):
