@@ -171,14 +171,14 @@ def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half
             GC = data['GC']
             col = 0
             ax[col].scatter(
-                RA_orig[(GC_orig = 0)], DEC_orig[(GC_orig = 0)], edgecolor='b', color='None', s=20, label='MW stars')
+                RA_orig[(GC_orig == 0)], DEC_orig[(GC_orig == 0)], edgecolor='b', color='None', s=20, label='MW stars')
             ax[col].scatter(
-                RA_orig[(GC_orig = 1)], DEC_orig[(GC_orig = 1)], edgecolor='k', color='None', s=20, label='Cl stars')
+                RA_orig[(GC_orig == 1)], DEC_orig[(GC_orig == 1)], edgecolor='k', color='None', s=20, label='Cl stars')
             ax[col].set_xlim(
                 [ra_cen[i] + half_size_plot_ra, ra_cen[i] - half_size_plot_ra])
             ax[col].set_ylim(
                 [dec_cen[i] - half_size_plot_dec, dec_cen[i] + half_size_plot_dec])
-            ax[col].set_title('Ipix='+str(ipix[i]), y= 0.9, pad=8, backgroundcolor='w') #{x=ra_cen[i], y=dec_cen[i], pad=8)
+            ax[col].set_title('Ipix {:d} before filter'.format(ipix[i]), y= 0.9, pad=8, backgroundcolor='w') #{x=ra_cen[i], y=dec_cen[i], pad=8)
             ax[col].legend(loc=3)
             ax[col].scatter(
                 ra_cen[i], dec_cen[i], color='k', s=100, marker='+', label='Cluster center')
@@ -186,13 +186,13 @@ def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half
             ax[col].set_ylabel('DEC (deg)')
 
             col = 1
-            ax[col].scatter(RA[GC = 0], DEC[GC = 0], edgecolor='b', color='None', s=20, label='Filt MW stars')
-            ax[col].scatter(RA[GC = 1], DEC[GC = 1], edgecolor='k', color='None', s=20, label='Filt cl stars')
+            ax[col].scatter(RA[GC == 0], DEC[GC == 0], edgecolor='b', color='None', s=20, label='Filt MW stars')
+            ax[col].scatter(RA[GC == 1], DEC[GC == 1], edgecolor='k', color='None', s=20, label='Filt cl stars')
             ax[col].set_xlim(
                 [ra_cen[i] + half_size_plot_ra, ra_cen[i] - half_size_plot_ra])
             ax[col].set_ylim(
                 [dec_cen[i] - half_size_plot_dec, dec_cen[i] + half_size_plot_dec])
-            ax[col].set_title('Ipix='+str(ipix[i]), y= 0.9, pad=8, backgroundcolor='w') #{x=ra_cen[i], y=dec_cen[i], pad=8)
+            ax[col].set_title('Ipix {:d} after filter'.format(ipix[i]), y= 0.9, pad=8, backgroundcolor='w') #{x=ra_cen[i], y=dec_cen[i], pad=8)
             ax[col].legend(loc=3)
             ax[col].scatter(
                 ra_cen[i], dec_cen[i], color='k', s=100, marker='+', label='Cluster center')
@@ -207,14 +207,14 @@ def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half
             col = 2
             ax[col].set_xlabel('RA (deg)')
             ax[col].scatter(
-                RA_orig[GC_orig = 0], DEC_orig[GC_orig = 0], edgecolor='b', color='None', s=20, label='MW stars')
+                RA_orig[GC_orig == 0], DEC_orig[GC_orig == 0], edgecolor='b', color='None', s=20, label='MW stars')
             ax[col].scatter(
-                RA_orig[GC_orig = 0], DEC_orig[GC_orig = 0], edgecolor='k', color='None', s=20, label='Cl stars')
+                RA_orig[GC_orig == 1], DEC_orig[GC_orig == 1], edgecolor='k', color='None', s=20, label='Cl stars')
             ax[col].set_xlim(
                 [ra_cen[i] + half_size_plot, ra_cen[i] - half_size_plot])
             ax[col].set_ylim(
                 [dec_cen[i] - half_size_plot, dec_cen[i] + half_size_plot])
-            ax[col].scatter(RA, DEC, color='r', s=2, label='Filt stars (all)')
+            ax[col].scatter(RA, DEC, color='r', s=2, label='Filt stars (MW+cl)')
             ax[col].set_xlim(
                 [ra_cen[i] + half_size_plot_ra, ra_cen[i] - half_size_plot_ra])
             ax[col].set_ylim(
