@@ -152,6 +152,7 @@ def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half
         data = fits.getdata(ipix_cats[i])
         RA_orig = data[ra_str]
         DEC_orig = data[dec_str]
+        GC_orig = data['GC']
         
         half_size_plot_dec = half_size_plot
         half_size_plot_ra = half_size_plot / np.cos(np.deg2rad(dec_cen[i]))
@@ -167,9 +168,12 @@ def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half
             data = fits.getdata(ipix_clean_cats[i])
             RA = data[ra_str]
             DEC = data[dec_str]
+            GC = data['GC']
             col = 0
             ax[col].scatter(
-                RA_orig, DEC_orig, edgecolor='b', color='None', s=20, label='All stars')
+                RA_orig[(GC_orig = 0)], DEC_orig[(GC_orig = 0)], edgecolor='b', color='None', s=20, label='MW stars')
+            ax[col].scatter(
+                RA_orig[(GC_orig = 1)], DEC_orig[(GC_orig = 1)], edgecolor='k', color='None', s=20, label='Cl stars')
             ax[col].set_xlim(
                 [ra_cen[i] + half_size_plot_ra, ra_cen[i] - half_size_plot_ra])
             ax[col].set_ylim(
@@ -182,7 +186,8 @@ def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half
             ax[col].set_ylabel('DEC (deg)')
 
             col = 1
-            ax[col].scatter(RA, DEC, edgecolor='b', color='None', s=20, label='Filtered stars')
+            ax[col].scatter(RA[GC = 0], DEC[GC = 0], edgecolor='b', color='None', s=20, label='Filt MW stars')
+            ax[col].scatter(RA[GC = 1], DEC[GC = 1], edgecolor='k', color='None', s=20, label='Filt cl stars')
             ax[col].set_xlim(
                 [ra_cen[i] + half_size_plot_ra, ra_cen[i] - half_size_plot_ra])
             ax[col].set_ylim(
@@ -202,12 +207,14 @@ def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half
             col = 2
             ax[col].set_xlabel('RA (deg)')
             ax[col].scatter(
-                RA_orig, DEC_orig, edgecolor='b', color='None', s=20, label='All stars')
+                RA_orig[GC_orig = 0], DEC_orig[GC_orig = 0], edgecolor='b', color='None', s=20, label='MW stars')
+            ax[col].scatter(
+                RA_orig[GC_orig = 0], DEC_orig[GC_orig = 0], edgecolor='k', color='None', s=20, label='Cl stars')
             ax[col].set_xlim(
                 [ra_cen[i] + half_size_plot, ra_cen[i] - half_size_plot])
             ax[col].set_ylim(
                 [dec_cen[i] - half_size_plot, dec_cen[i] + half_size_plot])
-            ax[col].scatter(RA, DEC, color='r', s=2, label='Filtered stars')
+            ax[col].scatter(RA, DEC, color='r', s=2, label='Filt stars (all)')
             ax[col].set_xlim(
                 [ra_cen[i] + half_size_plot_ra, ra_cen[i] - half_size_plot_ra])
             ax[col].set_ylim(
