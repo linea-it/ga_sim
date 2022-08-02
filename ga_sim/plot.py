@@ -104,7 +104,6 @@ def read_real_cat(cat_DG = "catalogs/objects_in_ref.dat", cat_GC = "catalogs/Har
     name_GC = np.loadtxt(
         cat_GC, dtype=str, usecols=(0), unpack=True
     )
-
     return name_DG, ra_DG, dec_DG, dist_kpc_DG, Mv_DG, rhl_pc_DG, FeH_DG, name_GC, R_MW_GC, FeH_GC, mM_GC, Mv_GC, rhl_pc_GC, dist_kpc_GC, rhl_arcmin_GC
 
 
@@ -126,12 +125,14 @@ def plot_clusters_clean(ipix_cats, ipix_clean_cats, nside, ra_str, dec_str, half
         Folder where the plots will be saved.
     st_line_arcsec : float
         Size of a ruler shown in the plots. Unit: arcsec
+
     """
     len_ipix = len(ipix_clean_cats)
 
     ipix = [int((i.split('/')[-1]).split('.')[0]) for i in ipix_cats]
 
     ra_cen, dec_cen = hp.pix2ang(nside, ipix, nest=True, lonlat=True)
+
     tot_clus = len(ipix)
     '''
     tot_clus = 0
