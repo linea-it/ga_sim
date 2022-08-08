@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickStart &mdash; ga_sim 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Installation" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> ga_sim
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">QuickStart</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#about-the-project">About The Project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#getting-started">Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#running">Running</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#usage">Usage</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">ga_sim</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>QuickStart</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/usage/quickstart.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="quickstart">
+<h1>QuickStart<a class="headerlink" href="#quickstart" title="Permalink to this headline"></a></h1>
+<section id="about-the-project">
+<h2>About The Project<a class="headerlink" href="#about-the-project" title="Permalink to this headline"></a></h2>
+<div class="line-block">
+<div class="line">This is a LIneA project to simulate dwarf galaxies and stellar clusters,</div>
+<div class="line">in order to later test pipelines to detect these stellar substructures</div>
+<div class="line">in catalogs covering large areas of the sky.</div>
+</div>
+<div class="line-block">
+<div class="line">People involved (alphabetic order):</div>
+</div>
+<ul class="simple">
+<li><p>Adriano Pieres</p></li>
+<li><p>Amanda Fassarela</p></li>
+<li><p>Ana Clara de Paula Moreira</p></li>
+<li><p>Cristiano Singulani</p></li>
+<li><p>Cristophe Benoist</p></li>
+<li><p>Luiz Nicolaci da Costa</p></li>
+<li><p>Michel Aguena</p></li>
+</ul>
+</section>
+<section id="getting-started">
+<h2>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline"></a></h2>
+<div class="line-block">
+<div class="line">Whether you use a jupyter notebook or the python script here, an environment</div>
+<div class="line">must be created using conda. The code here is intended to run on cluster of</div>
+<div class="line">LInea, so a few changes should be implemented if you want to run on other</div>
+<div class="line">environment.</div>
+</div>
+<div class="line-block">
+<div class="line">If this is the first time you are running the code in a new environment,</div>
+<div class="line">please create a conda environment and install the dependencies, whether</div>
+<div class="line">using <cite>pip</cite> or <cite>conda</cite>.</div>
+<div class="line">Be sure that these libraries are installed without errors. See the</div>
+<div class="line">information on ‘Installation’ to a complete list of steps.</div>
+</div>
+</section>
+<section id="running">
+<h2>Running<a class="headerlink" href="#running" title="Permalink to this headline"></a></h2>
+<div class="line-block">
+<div class="line">After activate the environment, run the code in terminal:</div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="o">~/</span><span class="n">ga_sim</span>
+<span class="n">python</span> <span class="n">ga_sim</span><span class="o">.</span><span class="n">py</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">Be sure that you are in the same folder as the code cloned.</div>
+</div>
+<div class="line-block">
+<div class="line">In case you want to run jupyter notebook:</div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">jupyter</span><span class="o">-</span><span class="n">lab</span> <span class="n">gawazpy</span><span class="o">.</span><span class="n">ipynb</span>
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line">Restart the jn kernel to load the libraries installed.</div>
+<div class="line">Run the jn cell by cell.</div>
+</div>
+</section>
+<section id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline"></a></h2>
+<p>The actions below are executed:</p>
+<ul class="simple">
+<li><p>Read config file (take a time to check all items in config file) and reddening maps;</p></li>
+<li><p>Download the isochrone following age and metalicity in cofig file. Check the connection if you have problems in downloading this file);</p></li>
+<li><p>Create a footprint based on limits in RA and DEC. See that limits of footprint follows geodesics in sky (TODO: change to Astropy Heapix instead of Healpy);</p></li>
+<li><p>Read catalogs and randomize position of stars in sky to avoid gradients and previous clustered stars. Stars are extinction corrected following the reddening maps;</p></li>
+<li><p>Generate a file table with all the features of simulated clusters: positions, masses, distances, exponential radius, ellipticity, angular position, etc (see complete list in code);</p></li>
+<li><p>Read photometric errors in specific file to survey (LSST errors came from a fit to DP0 stars; DES errors came from a fit to DES Y6 data);</p></li>
+<li><p>Creates (in parallel) a simulated cluster in each HealPixel following the sepcifications in file table of clusters. Each cluster is inserted in a file named with the i pixel. The photometric errors are taken into account to generate stars in simulated clusters;</p></li>
+<li><p>Join all the catalogs of stars into a single file with all the simulated stars. This step is optional;</p></li>
+<li><p>Use the catalog of stars in each pixel to apply observational bias (in parallel), removing stars that are closer than X arcsecs, in order to mimic the side-effect of group sources very close to each other (blending). In the code, if two sources are very close to each other, both are removed from catalog;</p></li>
+<li><p>Join all clear catalogs with stars filtered in;</p></li>
+<li><p>Writes features of stars after removing stars close to each other (recounting stars and recalculating absolute magnitude);</p></li>
+<li><p>Run a jupyter notebook to make plots and show results more confortably;</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Adriano Pieres.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

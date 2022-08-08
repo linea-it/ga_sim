@@ -8,11 +8,9 @@ Welcome to ga_sim's documentation!
 
 .. toctree::
    :maxdepth: 2
+   
    usage/installation
    usage/quickstart
-   :caption: Contents:
-
-
 
 Indices and tables
 ==================

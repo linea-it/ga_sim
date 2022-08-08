@@ -6,14 +6,13 @@
 Welcome to ga_sim's documentation!
 ==================================
 
-.. automodule:: ga_sim.ga_sim
-    :members:
-
-
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
+   usage/installation
+   usage/quickstart
+   usage/functions
 
 
 Indices and tables
