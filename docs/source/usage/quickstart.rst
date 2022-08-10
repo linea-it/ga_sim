@@ -53,7 +53,7 @@ Running
 
 ::
 
-	jupyter-lab gawazpy.ipynb
+	jupyter-lab ga_sim.ipynb
 
 
 | Restart the jn kernel to load the libraries installed.
