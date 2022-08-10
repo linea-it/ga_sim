@@ -15,7 +15,6 @@ Welcome to ga_sim's documentation!
    usage/installation
    usage/quickstart
    usage/functions
-   usage/about
 
 
 Indices and tables
@@ -24,3 +23,11 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+
+Acknowledgments
+===============
+
+| This work was supported by the Preparing for Astrophysics with LSST Program,
+| funded by the Heising Simons Foundation through grant 2021-2975, and
+| administered by Las Cumbres Observatory.
