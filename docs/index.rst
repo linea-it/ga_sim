@@ -6,11 +6,17 @@
 Welcome to ga_sim's documentation!
 ==================================
 
+
 .. toctree::
    :maxdepth: 2
-   
+   :caption: Contents:
+
+
    usage/installation
    usage/quickstart
+   usage/functions
+   usage/about
+
 
 Indices and tables
 ==================
