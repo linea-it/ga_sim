@@ -79,6 +79,13 @@ print('Mean mass (M_sun): {:.2f}'.format(mean_mass))
 
 hpx_ftp = make_footprint(param['ra_min'], param['ra_max'], param['dec_min'], param['dec_max'],
                          param['nside_ftp'], output_path=param['results_path'])
+                         
+area_sampled = len(hpx_ftp) * hp.nside2pixarea(param['nside_ftp'], degrees=True)
+
+if (param['survey'] == 'lsst') and (area_sampled < 300.):
+    mode = 'expand'
+else:
+    mode = 'cutout'
 
 # DP0 data: tablename for DP0: dp0.dp0_full_des
 # extendedness: 0 for stars, 1 for galaxies
@@ -119,7 +126,8 @@ RA, DEC, MAG_G, MAGERR_G, MAG_R, MAGERR_R = read_cat(
     param['mmin'], param['mmax'], param['cmin'], param['cmax'],
     param['survey'] +
     "_derred.fits", 1.17450, 0.86666, ngp, sgp, param['results_path'],
-    param['results_path'] + "/ftp_4096_nest.fits", param['nside3'], param['nside_ftp'])
+    param['results_path'] + "/ftp_4096_nest.fits", param['nside3'], param['nside_ftp'],
+    mode, area_sampled)
 
 
 print('Now generating cluster file.')

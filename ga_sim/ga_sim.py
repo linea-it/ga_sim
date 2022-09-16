@@ -975,7 +975,7 @@ def gen_clus_file(ra_min, ra_max, dec_min, dec_max, nside_ini, border_extract,
     return RA_pix, DEC_pix, r_exp, ell, pa, dist, mass, mM, hp_sample_un
 
 
-def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax, outfile, AG_AV, AR_AV, ngp, sgp, results_path, hpx_ftp, nside3, nside_ftp):
+def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax, outfile, AG_AV, AR_AV, ngp, sgp, results_path, hpx_ftp, nside3, nside_ftp, mode, area_sampled):
     """Read catalog from LIneA data base.
 
     Parameters
@@ -1065,8 +1065,17 @@ def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax
     hpx_ftp_data = hdu2[1].data.field("HP_PIXEL_NEST_4096")
     hdu2.close()
 
-    RA_sort, DEC_sort = d_star_real_cat(
-        hpx_ftp_data, len(RA), nside3, nside_ftp)
+    if mode == 'cutout':
+        RA_sort, DEC_sort = d_star_real_cat(
+            hpx_ftp_data, len(RA), nside3, nside_ftp)
+    else:
+        total_els = int(area_sampled * len(RA) / 300)
+        RA_sort, DEC_sort = d_star_real_cat(
+            hpx_ftp_data, total_els, nside3, nside_ftp)
+        MAG_G = np.random.choice(MAG_G, total_els, replace=True)
+        MAG_R = np.random.choice(MAG_R, total_els, replace=True)
+        MAGERR_G = np.random.choice(MAGERR_G, total_els, replace=True)
+        MAGERR_R = np.random.choice(MAGERR_R, total_els, replace=True)
 
     col1 = fits.Column(name='RA', format='D', array=RA_sort)
     col2 = fits.Column(name='DEC', format='D', array=DEC_sort)
