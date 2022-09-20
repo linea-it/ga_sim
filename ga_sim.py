@@ -34,8 +34,8 @@ from time import sleep
 from tqdm import tqdm
 import condor
 import sys
-sys.path.append('/home/adriano.pieres/ga_sim/ga_sim')
-sys.path.append('/home/adriano.pieres/ga_sim')
+# sys.path.append('/home/adriano.pieres/ga_sim/ga_sim')
+# sys.path.append('/home/adriano.pieres/ga_sim')
 
 parsl.clear()
 parsl.load(condor.get_config('htcondor'))
