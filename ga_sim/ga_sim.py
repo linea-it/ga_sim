@@ -15,6 +15,40 @@ from pathlib import Path
 from itertools import compress
 
 
+def select_ipix(nside, ra_min, ra_max, dec_min, dec_max):
+    """This function selects ipixels from a range of ra and dec
+    avoiding the problem of having geodesics as edges to the 
+    polygons. query_polygon does not accept concave polygons as
+    input.
+
+    Parameters
+    ----------
+    nside : integer
+        Nside of ipix
+    ra_min : float
+        Minimum of RA in degrees.
+    ra_max : float
+        Maximum of RA in degrees.
+    dec_min : float
+        Minimum of DEC in degrees.
+    dec_max : float
+        Maximum of DEC in degrees.
+
+    Returns
+    -------
+    array-like
+        Selection of pixels in polygon.
+    """
+    theta1 = np.pi/2 - np.deg2rad(dec_max)
+    theta2 = np.pi/2 - np.deg2rad(dec_min)
+    hp_all = hp.query_strip(nside, theta1, theta2, inclusive=False, nest=False, buff=None)
+    ra_c, dec_c = hp.pix2ang(nside, hp_all, nest=False, lonlat=True)
+    cond = (ra_c > ra_min)&(ra_c <= ra_max)
+    hp_sel = hp_all[cond]
+    hp_sel_nest = hp.ring2nest(nside, hp_sel)
+    return hp_sel_nest
+
+
 def export_results(proc_dir, res_path, copy_path):
     """This function exports the results of the run to a directory called proc_dir,
     creating a subfolder with number following the last process in that folder.
@@ -26,8 +60,7 @@ def export_results(proc_dir, res_path, copy_path):
     """
 
     dir_list = sorted(glob.glob(proc_dir + '/*'))
-    new_dir = proc_dir + \
-        "/{0:05d}".format(int(dir_list[-1].split('/')[-1]) + 1)
+    new_dir = proc_dir + "/{0:05d}".format(int(dir_list[-1].split('/')[-1]) + 1)
     print(new_dir)
     os.system('mkdir -p ' + new_dir)
     os.system('mkdir -p ' + new_dir + '/detections')
@@ -35,7 +68,7 @@ def export_results(proc_dir, res_path, copy_path):
     #os.system('mkdir -p ' + new_dir + '/simulations/sample_data')
     # os.system('cp sample_data/*.dat' + ' ' +
     #          new_dir + '/simulations/sample_data/')
-    # os.system('cp sample_data/*.asc' + ' ' +
+    #os.system('cp sample_data/*.asc' + ' ' +
     #          new_dir + '/simulations/sample_data/')
     dirs = glob.glob(res_path + '/*/')
     for i in dirs:
@@ -46,13 +79,11 @@ def export_results(proc_dir, res_path, copy_path):
     files2 = glob.glob('*.*')
     for i in files2:
         os.system('cp ' + i + ' ' + new_dir + '/simulations/')
-    new_dir2 = copy_path + \
-        "/{0:05d}".format(int(dir_list[-1].split('/')[-1]) + 1)
+    new_dir2 = copy_path + "/{0:05d}".format(int(dir_list[-1].split('/')[-1]) + 1)
     os.system('mkdir -p ' + new_dir2)
     os.system('mkdir -p ' + new_dir2 + '/simulations')
     html_file = glob.glob('*.html')
-    os.system('cp ' + html_file[0] + ' ' +
-              new_dir2 + '/simulations/index.html')
+    os.system('cp ' + html_file[0] + ' ' + new_dir2 + '/simulations/index.html')
 
 
 def king_prof(N_stars, rc, rt):
@@ -91,6 +122,65 @@ def king_prof(N_stars, rc, rt):
             rad_star.append(rad)
     return np.multiply(rad_star, rt)
 
+
+def clean_input_cat_dist(dir_name, file_name, ra_str, dec_str, max_dist_arcsec, init_dist):
+    """ This function removes stars closer than max_dist_arcsec. That is specially significant to
+    stellar clusters, where the stellar crowding in images creates a single
+    object in cluster's center, but many star in the periphery.
+
+    Parameters
+    ----------
+    file_name : str
+        Name of input file.
+    ra_str : str
+        Label for RA coordinate.
+    dec_str : str
+        Label for DEC coordinate.
+    max_dist_arcsec : float
+        Stars closer than this par will be removed. Units: arcsec.
+    """
+
+    output_file = dir_name + '/' + file_name.split('/')[-1]
+
+    data = getdata(file_name)
+    t = Table.read(file_name)
+    label_columns = t.colnames
+    t_format = []
+    for i in label_columns:
+        t_format.append(t[i].info.dtype)
+
+    clean_idx = []
+
+    RA = data[ra_str]
+    DEC = data[dec_str]
+
+    for i, j in enumerate(RA):
+        length_dec = init_dist
+        length_ra = init_dist / np.cos(np.deg2rad(DEC[i]))
+        cond = (RA < j + length_ra) & (RA > j - length_ra) & (DEC <
+                                                        DEC[i] + length_dec) & (DEC > DEC[i] - length_dec)
+        RA_ = RA[cond]
+        DEC_ = DEC[cond]
+        dist = dist_ang(RA_, DEC_, j, DEC[i])
+        if len(dist) > 1:
+            if (sorted(set(dist))[1] > max_dist_arcsec / 3600):
+                clean_idx.append(i)
+        else:
+            clean_idx.append(i)
+
+    data_clean = np.array([data[:][i] for i in clean_idx])
+
+    col = [i for i in range(len(label_columns))]
+
+    for i, j in enumerate(label_columns):
+        col[i] = fits.Column(
+            name=label_columns[i], format=t_format[i], array=data_clean[:, i])
+    cols = fits.ColDefs([col[i] for i in range(len(label_columns))])
+    tbhdu = fits.BinTableHDU.from_columns(cols)
+
+    tbhdu.writeto(output_file, overwrite=True)
+
+    return 1
 
 
 def exp_prof(N_stars, rexp, max_length=10):
@@ -385,24 +475,11 @@ def gen_clus_file(ra_min, ra_max, dec_min, dec_max, nside_ini, border_extract,
         * (ra_max - ra_min)
     )
 
-    vertices = hp.ang2vec(
-        [
-            ra_min + border_extract,
-            ra_max - border_extract,
-            ra_max - border_extract,
-            ra_min + border_extract,
-        ],
-        [
-            dec_min + border_extract,
-            dec_min + border_extract,
-            dec_max - border_extract,
-            dec_max - border_extract,
-        ],
-        lonlat=True,
-    )
-
-    hp_sample_un = hp.query_polygon(
-        nside_ini, vertices, inclusive=False, nest=True, buff=None)
+    border_extract_ra = border_extract / np.cos(np.deg2rad(border_extract))
+    hp_sample_un = select_ipix(nside_ini, ra_min + border_extract_ra,
+                               ra_max - border_extract_ra,
+                               dec_min + border_extract,
+                               dec_max - border_extract)
 
     RA_pix, DEC_pix = hp.pix2ang(
         nside_ini, hp_sample_un, nest=True, lonlat=True)
@@ -433,7 +510,7 @@ def gen_clus_file(ra_min, ra_max, dec_min, dec_max, nside_ini, border_extract,
     return RA_pix, DEC_pix, r_exp, ell, pa, dist, mass, mM, hp_sample_un
 
 
-def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax, outfile, AG_AV, AR_AV, ngp, sgp, results_path, hpx_ftp, nside3, nside_ftp):
+def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax, outfile, AG_AV, AR_AV, ngp, sgp, results_path, hpx_ftp, nside3, nside_ftp, mode, area_sampled):
     """Read catalog from LIneA data base.
 
     Parameters
@@ -523,8 +600,17 @@ def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax
     hpx_ftp_data = hdu2[1].data.field("HP_PIXEL_NEST_4096")
     hdu2.close()
 
-    RA_sort, DEC_sort = d_star_real_cat(
-        hpx_ftp_data, len(RA), nside3, nside_ftp)
+    if mode == 'cutout':
+        RA_sort, DEC_sort = d_star_real_cat(
+            hpx_ftp_data, len(RA), nside3, nside_ftp)
+    else:
+        total_els = int(area_sampled * len(RA) / 300)
+        RA_sort, DEC_sort = d_star_real_cat(
+            hpx_ftp_data, total_els, nside3, nside_ftp)
+        MAG_G = np.random.choice(MAG_G, total_els, replace=True)
+        MAG_R = np.random.choice(MAG_R, total_els, replace=True)
+        MAGERR_G = np.random.choice(MAGERR_G, total_els, replace=True)
+        MAGERR_R = np.random.choice(MAGERR_R, total_els, replace=True)
 
     col1 = fits.Column(name='RA', format='D', array=RA_sort)
     col2 = fits.Column(name='DEC', format='D', array=DEC_sort)
@@ -605,7 +691,7 @@ def download_iso(version, phot_system, Z, age, av_ext, out_file, iter_max):
     if phot_system == 'des':
         phot_system = 'decam'
 
-    while (file_is_empty) & (count < iter_max):
+    while (file_is_empty)&(count < iter_max):
         print('Iteration {:d} to download PARSEC isochrone.'.format(count + 1))
         try:
             os.system(("wget -o lixo -Otmp --post-data='submit_form=Submit&cmd_version={}&photsys_file=tab_mag_odfnew/tab_mag_{}.dat&photsys_version=YBC&output_kind=0&output_evstage=1&isoc_isagelog=0&isoc_agelow={:.2e}&isoc_ageupp={:.2e}&isod_dage=0&isoc_ismetlog=0&isoc_zlow={:.6f}&isoc_zupp={:.6f}&isod_dz=0&extinction_av={:.3f}&{}' {}/cgi-bin/cmd_{}".format(
@@ -696,15 +782,7 @@ def make_footprint(
         a list of ipixels in the area selected (inclusive=False)
     """
 
-    vertices = hp.ang2vec(
-        [ra_min, ra_max, ra_max, ra_min],
-        [dec_min, dec_min, dec_max, dec_max],
-        lonlat=True,
-    )
-
-    hp_sample = hp.query_polygon(
-        nside_ftp, vertices, inclusive=False, fact=64, nest=True, buff=None
-    )
+    hp_sample = select_ipix(nside_ftp, ra_min, ra_max, dec_min, dec_max)
 
     filename = "ftp_4096_nest.fits"
     filepath = Path(output_path, filename)
@@ -1223,43 +1301,43 @@ def join_cat(
     GC = np.zeros(len(RA), dtype=int)
 
     for j in range(len(hp_sample_un)):
-        # try:
+        #try:
         # input_path = Diretório onde se encontram os arquivos _clus.
         filepath = Path(input_path, "%s_clus.dat" % hp_sample_un[j])
+        print('FILEPATH == ', filepath)
+        try:
+            RA_clus, DEC_clus, MAG1_clus, MAGERR1_clus, MAG2_clus, MAGERR2_clus = np.loadtxt(filepath, usecols=(0, 1, 2, 3, 4, 5), unpack=True)
 
-        RA_clus, DEC_clus,  MAG1_clus, MAGERR1_clus, MAG2_clus, MAGERR2_clus = np.loadtxt(
-            filepath, usecols=(0, 1, 2, 3, 4, 5), unpack=True)
+            pr_limit = (
+                (RA_clus >= ra_min)
+                & (RA_clus <= ra_max)
+                & (DEC_clus >= dec_min)
+                & (DEC_clus <= dec_max)
+                & (MAG1_clus <= mmax)
+                & (MAG1_clus >= mmin)
+                & (MAG1_clus - MAG2_clus >= cmin)
+                & (MAG1_clus - MAG2_clus <= cmax)
+            )
 
-        pr_limit = (
-            (RA_clus >= ra_min)
-            & (RA_clus <= ra_max)
-            & (DEC_clus >= dec_min)
-            & (DEC_clus <= dec_max)
-            & (MAG1_clus <= mmax)
-            & (MAG1_clus >= mmin)
-            & (MAG1_clus - MAG2_clus >= cmin)
-            & (MAG1_clus - MAG2_clus <= cmax)
-        )
+            RA_clus, DEC_clus, MAG1_clus, MAG2_clus, MAGERR1_clus, MAGERR2_clus = (
+                RA_clus[pr_limit],
+                DEC_clus[pr_limit],
+                MAG1_clus[pr_limit],
+                MAG2_clus[pr_limit],
+                MAGERR1_clus[pr_limit],
+                MAGERR2_clus[pr_limit],
+            )
 
-        RA_clus, DEC_clus, MAG1_clus, MAG2_clus, MAGERR1_clus, MAGERR2_clus = (
-            RA_clus[pr_limit],
-            DEC_clus[pr_limit],
-            MAG1_clus[pr_limit],
-            MAG2_clus[pr_limit],
-            MAGERR1_clus[pr_limit],
-            MAGERR2_clus[pr_limit],
-        )
-
-        GC_clus = np.ones(len(RA_clus), dtype=int)
-        GC = np.concatenate((GC, GC_clus), axis=0)
-        RA = np.concatenate((RA, RA_clus), axis=0)
-        DEC = np.concatenate((DEC, DEC_clus), axis=0)
-        MAG_G = np.concatenate((MAG_G, MAG1_clus), axis=0)
-        MAG_R = np.concatenate((MAG_R, MAG2_clus), axis=0)
-        MAGERR_G = np.concatenate((MAGERR_G, MAGERR1_clus), axis=0)
-        MAGERR_R = np.concatenate((MAGERR_R, MAGERR2_clus), axis=0)
-        # except:
-        #    print("zero stars in ", hp_sample_un[j])
+            GC_clus = np.ones(len(RA_clus), dtype=int)
+            GC = np.concatenate((GC, GC_clus), axis=0)
+            RA = np.concatenate((RA, RA_clus), axis=0)
+            DEC = np.concatenate((DEC, DEC_clus), axis=0)
+            MAG_G = np.concatenate((MAG_G, MAG1_clus), axis=0)
+            MAG_R = np.concatenate((MAG_R, MAG2_clus), axis=0)
+            MAGERR_G = np.concatenate((MAGERR_G, MAGERR1_clus), axis=0)
+            MAGERR_R = np.concatenate((MAGERR_R, MAGERR2_clus), axis=0)
+        except:
+            print("zero stars in ", hp_sample_un[j])
 
     filepath = Path(output_path, "%s_mockcat_for_detection.fits" % survey)
 
@@ -1451,7 +1529,7 @@ def write_sim_clus_features(
                 snr_rout_annulus_arcmin / 60.,
                 file_error,
                 file_mask
-            )
+                )
             SNR_clean = snr_estimate(
                 RA__clean,
                 DEC__clean,
@@ -1465,7 +1543,7 @@ def write_sim_clus_features(
                 snr_rout_annulus_arcmin / 60.,
                 file_error,
                 file_mask
-            )
+                )
 
             cond_clus = (cond) & (GC == 1)
             cond_clus_clean = (cond_clean) & (GC_clean == 1)
