@@ -15,6 +15,17 @@ from pathlib import Path
 from itertools import compress
 
 
+def select_ipix(nside, ra_min, ra_max, dec_min, dec_max):
+    theta1 = np.pi/2 - np.deg2rad(dec_max)
+    theta2 = np.pi/2 - np.deg2rad(dec_min)
+    hp_all = hp.query_strip(nside, theta1, theta2, inclusive=False, nest=False, buff=None)
+    ra_c, dec_c = hp.pix2ang(nside, hp_all, nest=False, lonlat=True)
+    cond = (ra_c > ra_min)&(ra_c <= ra_max)
+    hp_sel = hp_all[cond]
+    hp_sel_nest = hp.ring2nest(nside, hp_sel)
+    return hp_sel_nest
+
+
 def export_results(proc_dir, res_path, copy_path):
     """This function exports the results of the run to a directory called proc_dir,
     creating a subfolder with number following the last process in that folder.
@@ -441,24 +452,11 @@ def gen_clus_file(ra_min, ra_max, dec_min, dec_max, nside_ini, border_extract,
         * (ra_max - ra_min)
     )
 
-    vertices = hp.ang2vec(
-        [
-            ra_min + border_extract,
-            ra_max - border_extract,
-            ra_max - border_extract,
-            ra_min + border_extract,
-        ],
-        [
-            dec_min + border_extract,
-            dec_min + border_extract,
-            dec_max - border_extract,
-            dec_max - border_extract,
-        ],
-        lonlat=True,
-    )
-
-    hp_sample_un = hp.query_polygon(
-        nside_ini, vertices, inclusive=False, nest=True, buff=None)
+    border_extract_ra = border_extract / np.cos(np.deg2rad(border_extract))
+    hp_sample_un = select_ipix(nside_ini, ra_min + border_extract_ra,
+                               ra_max - border_extract_ra,
+                               dec_min + border_extract,
+                               dec_max - border_extract)
 
     RA_pix, DEC_pix = hp.pix2ang(
         nside_ini, hp_sample_un, nest=True, lonlat=True)
@@ -761,15 +759,7 @@ def make_footprint(
         a list of ipixels in the area selected (inclusive=False)
     """
 
-    vertices = hp.ang2vec(
-        [ra_min, ra_max, ra_max, ra_min],
-        [dec_min, dec_min, dec_max, dec_max],
-        lonlat=True,
-    )
-
-    hp_sample = hp.query_polygon(
-        nside_ftp, vertices, inclusive=False, fact=64, nest=True, buff=None
-    )
+    hp_sample = select_ipix(nside_ftp, ra_min, ra_max, dec_min, dec_max)
 
     filename = "ftp_4096_nest.fits"
     filepath = Path(output_path, filename)
@@ -1291,39 +1281,40 @@ def join_cat(
         #try:
         # input_path = Diretório onde se encontram os arquivos _clus.
         filepath = Path(input_path, "%s_clus.dat" % hp_sample_un[j])
-        
-        RA_clus, DEC_clus,  MAG1_clus, MAGERR1_clus, MAG2_clus, MAGERR2_clus = np.loadtxt(filepath, usecols=(0, 1, 2, 3, 4, 5), unpack=True)
+        print('FILEPATH == ', filepath)
+        try:
+            RA_clus, DEC_clus, MAG1_clus, MAGERR1_clus, MAG2_clus, MAGERR2_clus = np.loadtxt(filepath, usecols=(0, 1, 2, 3, 4, 5), unpack=True)
 
-        pr_limit = (
-            (RA_clus >= ra_min)
-            & (RA_clus <= ra_max)
-            & (DEC_clus >= dec_min)
-            & (DEC_clus <= dec_max)
-            & (MAG1_clus <= mmax)
-            & (MAG1_clus >= mmin)
-            & (MAG1_clus - MAG2_clus >= cmin)
-            & (MAG1_clus - MAG2_clus <= cmax)
-        )
+            pr_limit = (
+                (RA_clus >= ra_min)
+                & (RA_clus <= ra_max)
+                & (DEC_clus >= dec_min)
+                & (DEC_clus <= dec_max)
+                & (MAG1_clus <= mmax)
+                & (MAG1_clus >= mmin)
+                & (MAG1_clus - MAG2_clus >= cmin)
+                & (MAG1_clus - MAG2_clus <= cmax)
+            )
 
-        RA_clus, DEC_clus, MAG1_clus, MAG2_clus, MAGERR1_clus, MAGERR2_clus = (
-            RA_clus[pr_limit],
-            DEC_clus[pr_limit],
-            MAG1_clus[pr_limit],
-            MAG2_clus[pr_limit],
-            MAGERR1_clus[pr_limit],
-            MAGERR2_clus[pr_limit],
-        )
+            RA_clus, DEC_clus, MAG1_clus, MAG2_clus, MAGERR1_clus, MAGERR2_clus = (
+                RA_clus[pr_limit],
+                DEC_clus[pr_limit],
+                MAG1_clus[pr_limit],
+                MAG2_clus[pr_limit],
+                MAGERR1_clus[pr_limit],
+                MAGERR2_clus[pr_limit],
+            )
 
-        GC_clus = np.ones(len(RA_clus), dtype=int)
-        GC = np.concatenate((GC, GC_clus), axis=0)
-        RA = np.concatenate((RA, RA_clus), axis=0)
-        DEC = np.concatenate((DEC, DEC_clus), axis=0)
-        MAG_G = np.concatenate((MAG_G, MAG1_clus), axis=0)
-        MAG_R = np.concatenate((MAG_R, MAG2_clus), axis=0)
-        MAGERR_G = np.concatenate((MAGERR_G, MAGERR1_clus), axis=0)
-        MAGERR_R = np.concatenate((MAGERR_R, MAGERR2_clus), axis=0)
-        #except:
-        #    print("zero stars in ", hp_sample_un[j])
+            GC_clus = np.ones(len(RA_clus), dtype=int)
+            GC = np.concatenate((GC, GC_clus), axis=0)
+            RA = np.concatenate((RA, RA_clus), axis=0)
+            DEC = np.concatenate((DEC, DEC_clus), axis=0)
+            MAG_G = np.concatenate((MAG_G, MAG1_clus), axis=0)
+            MAG_R = np.concatenate((MAG_R, MAG2_clus), axis=0)
+            MAGERR_G = np.concatenate((MAGERR_G, MAGERR1_clus), axis=0)
+            MAGERR_R = np.concatenate((MAGERR_R, MAGERR2_clus), axis=0)
+        except:
+            print("zero stars in ", hp_sample_un[j])
 
     filepath = Path(output_path, "%s_mockcat_for_detection.fits" % survey)
 
