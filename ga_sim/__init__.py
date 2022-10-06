@@ -15,7 +15,8 @@ from ga_sim.ga_sim import (
     radec2GCdist,
     remove_close_stars,
     download_iso,
-    read_cat,
+    filter_ipix_stars,
+    resize_ipix_cats,
     gen_clus_file,
     read_error,
     clus_file_results,
@@ -23,7 +24,9 @@ from ga_sim.ga_sim import (
     split_files,
     clean_input_cat,
     clean_input_cat_dist,
-    export_results
+    export_results,
+    select_ipix,
+    estimation_area
 )
 from ga_sim.plot import (
     plot_clusters_clean,

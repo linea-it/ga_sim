@@ -15,10 +15,159 @@ from pathlib import Path
 from itertools import compress
 
 
-def select_ipix(nside, ra_min, ra_max, dec_min, dec_max):
+def get_hpx_ftp_data(param):
+
+    globals().update(param)
+
+    files = glob.glob(ftp_path + '/*.fits')
+
+    ipix = []
+
+    for i in files:
+        data = getdata(i)
+        ipix.extend(data['HP_PIXEL_NEST_4096'])
+
+    return ipix
+
+def estimation_area(param):
+    
+    globals().update(param)
+
+    files = glob.glob(ftp_path + '/*.fits')
+
+    n_ipix = 0.
+    for i in files:
+        data = getdata(i)
+        n_ipix += np.sum(data['SIGNAL'])
+
+    return n_ipix * hp.nside2pixarea(nside_ftp, degrees=True)
+
+
+def resize_ipix_cats(ipix_files, param, mode, area_sampled):
+
+    globals().update(param)
+
+    MAG_G_, MAG_R_, MAGERR_G_, MAGERR_R_ = [], [], [], []
+
+    for i in ipix_files:
+        try:
+            filepath = Path(hpx_cats_filt_path, "%s.fits" % i)
+            data = getdata(filepath)
+            MAG_G = data['MAG_G']
+            MAGERR_G = data['MAGERR_G']
+            MAG_R = data['MAG_R']
+            MAGERR_R = data['MAGERR_R']
+
+            MAG_G_.extend(MAG_G)
+            MAG_R_.extend(MAG_R)
+            MAGERR_G_.extend(MAGERR_G)
+            MAGERR_R_.extend(MAGERR_R)
+        except:
+            print('Missing tile: {:d}'.format(i))
+
+    hpx_ftp_data = get_hpx_ftp_data(param)
+
+    if mode == 'cutout':
+        RA, DEC = d_star_real_cat(
+            hpx_ftp_data, len(MAG_G_), nside3, nside_ftp)
+    else:
+        total_els = int(area_sampled * len(MAG_G_) / 300)
+        RA, DEC = d_star_real_cat(
+            hpx_ftp_data, total_els, nside3, nside_ftp)
+        idx_random = np.random.randint(len(MAG_G_), size=total_els)
+        MAG_G = [MAG_G_[i] for i in idx_random]
+        MAG_R = [MAG_R_[i] for i in idx_random]
+        MAGERR_G = [MAGERR_G_[i] for i in idx_random]
+        MAGERR_R = [MAGERR_R_[i] for i in idx_random]
+
+    HPX = hp.ang2pix(nside_ini, RA, DEC, nest=True, lonlat=True)
+    
+    idx_sort = np.argsort(HPX)
+
+    HPX_sort = [HPX[i] for i in idx_sort]
+    RA_sort = [RA[i] for i in idx_sort]
+    DEC_sort = [DEC[i] for i in idx_sort]
+
+    HPX_un = np.unique(HPX_sort)
+
+    for j in HPX_un:
+        cond = (HPX_sort == j)
+        col0 = fits.Column(name="ra", format="D", array=list(compress(RA_sort, cond)))
+        col1 = fits.Column(name="dec", format="D", array=list(compress(DEC_sort, cond)))
+        col2 = fits.Column(name="mag_g_with_err", format="E", array=list(compress(MAG_G, cond)))
+        col3 = fits.Column(name="mag_r_with_err", format="E", array=list(compress(MAG_R, cond)))
+        col4 = fits.Column(name="magerr_g", format="E", array=list(compress(MAGERR_G, cond)))
+        col5 = fits.Column(name="magerr_r", format="E", array=list(compress(MAGERR_R, cond)))
+        # col7 = fits.Column(name="HPX64", format="K", array=HPX64)
+        cols = fits.ColDefs([col0, col1, col2, col3, col4, col5])
+        tbhdu = fits.BinTableHDU.from_columns(cols)
+        tbhdu.writeto(hpx_cats_path + '/' + str(j) + '.fits', overwrite=True)
+
+
+def filter_ipix_stars(i, param, ngp, sgp):
+
+    globals().update(param)
+
+    try:
+        filepath = Path('{}/{}'.format(cat_infile_path, str(nside_infile)), "{}.fits".format(str(i)))
+        data = getdata(filepath)
+        RA = data['RA']
+        DEC = data['DEC']
+        MAG_G = data['MAG_G']
+        MAGERR_G = data['MAGERR_G']
+        MAG_R = data['MAG_R']
+        MAGERR_R = data['MAGERR_R']
+        EXT = data['EXTENDEDNESS']
+        
+        cond1 = (MAG_G == None) | (MAG_R == None)
+
+        MAG_G = np.where(cond1, -99, MAG_G)
+        MAGERR_G = np.where(cond1, -99, MAGERR_G)
+        MAG_R = np.where(cond1, -99, MAG_R)
+        MAGERR_R = np.where(cond1, -99, MAGERR_R)
+
+        cond2 = (RA > ra_min)&(RA < ra_max)&(DEC > dec_min)&(DEC < dec_max)&(EXT == 0)
+        
+        RA = RA[cond2]
+        DEC = DEC[cond2]
+        MAG_G = MAG_G[cond2]
+        MAGERR_G = MAGERR_G[cond2]
+        MAG_R = MAG_R[cond2]
+        MAGERR_R = MAGERR_R[cond2]
+        
+        c = SkyCoord(
+        ra=RA * u.degree,
+        dec=DEC * u.degree,
+        frame='icrs'
+        )
+        L = c.galactic.l.degree
+        B = c.galactic.b.degree
+
+        MAG_G -= Ag_AV * get_av(L, B, ngp, sgp)
+        MAG_R -= Ar_AV * get_av(L, B, ngp, sgp)
+
+        cond = (np.abs(MAG_G) < mmax) & (np.abs(MAG_G) > mmin) & (
+            MAG_G-MAG_R > cmin) & (MAG_G-MAG_R < cmax)
+
+        col0 = fits.Column(name="MAG_G", format="E", array=MAG_G)
+        col1 = fits.Column(name="MAGERR_G", format="E", array=MAGERR_G)
+        col2 = fits.Column(name="MAG_R", format="E", array=MAG_R)
+        col3 = fits.Column(name="MAGERR_R", format="E", array=MAGERR_R)
+
+        cols = fits.ColDefs([col0, col1, col2, col3])
+        tbhdu = fits.BinTableHDU.from_columns(cols)
+        filepath2 = Path(hpx_cats_filt_path, "{}.fits".format(str(i)))
+        print('Saving to {}'.format(filepath2))
+        tbhdu.writeto(filepath2, overwrite=True)
+    except:
+        print('Missing file ipix {:d}'.format(i))
+
+
+
+def select_ipix(nside, ra_min, ra_max, dec_min, dec_max, inclusive=False):
     theta1 = np.pi/2 - np.deg2rad(dec_max)
     theta2 = np.pi/2 - np.deg2rad(dec_min)
-    hp_all = hp.query_strip(nside, theta1, theta2, inclusive=False, nest=False, buff=None)
+    hp_all = hp.query_strip(nside, theta1, theta2, inclusive=inclusive, nest=False, buff=None)
     ra_c, dec_c = hp.pix2ang(nside, hp_all, nest=False, lonlat=True)
     cond = (ra_c > ra_min)&(ra_c <= ra_max)
     hp_sel = hp_all[cond]
@@ -740,9 +889,7 @@ def get_av(gal_l, gal_b, ngp, sgp):
     return av
 
 
-def make_footprint(
-    ra_min, ra_max, dec_min, dec_max, nside_ftp, output_path=Path("results")
-):
+def make_footprint(param):
     """Creates a partial HealPix map based on the area selected,
     with nside = nside_ftp
 
@@ -759,22 +906,23 @@ def make_footprint(
         a list of ipixels in the area selected (inclusive=False)
     """
 
+    globals().update(param)
+
     hp_sample = select_ipix(nside_ftp, ra_min, ra_max, dec_min, dec_max)
 
-    filename = "ftp_4096_nest.fits"
-    filepath = Path(output_path, filename)
+    ra, dec = hp.pix2ang(nside_ftp, hp_sample, nest=True, lonlat=True)
 
-    # hp.mollview(m, nest=True, flip='astro')
-    SIGNAL = np.ones(len(hp_sample))
+    hp_ini = hp.ang2pix(nside_ini, ra, dec, nest=True, lonlat=True)
 
-    col0 = fits.Column(name="HP_PIXEL_NEST_4096", format="J", array=hp_sample)
-    col1 = fits.Column(name="SIGNAL", format="E", array=SIGNAL)
+    hp_ini_un = np.unique(hp_ini)
 
-    cols = fits.ColDefs([col0, col1])
-    tbhdu = fits.BinTableHDU.from_columns(cols)
-    tbhdu.writeto(filepath, overwrite=True)
-
-    return hp_sample
+    for j in hp_ini_un:
+        cond = (hp_ini == j)
+        col0 = fits.Column(name="HP_PIXEL_NEST_4096", format="J", array=hp_sample[cond])
+        col1 = fits.Column(name="SIGNAL", format="E", array=np.ones(cond.sum()))
+        cols = fits.ColDefs([col0, col1])
+        tbhdu = fits.BinTableHDU.from_columns(cols)
+        tbhdu.writeto(ftp_path + '/' + str(j) + '.fits', overwrite=True)
 
 
 def d_star_real_cat(hpx_ftp, length, nside3, nside_ftp):

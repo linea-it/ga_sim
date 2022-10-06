@@ -4,7 +4,7 @@ from ga_sim import (
     join_cat,
     write_sim_clus_features,
     download_iso,
-    read_cat,
+    filter_ipix_stars,
     gen_clus_file,
     read_error,
     clus_file_results,
@@ -12,8 +12,12 @@ from ga_sim import (
     split_files,
     clean_input_cat,
     clean_input_cat_dist,
-    export_results
+    export_results,
+    select_ipix,
+    resize_ipix_cats,
+    estimation_area
 )
+
 import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy import units as u
@@ -34,8 +38,6 @@ from time import sleep
 from tqdm import tqdm
 import condor
 import sys
-# sys.path.append('/home/adriano.pieres/ga_sim/ga_sim')
-# sys.path.append('/home/adriano.pieres/ga_sim')
 
 parsl.clear()
 parsl.load(condor.get_config('htcondor'))
@@ -47,6 +49,8 @@ with open(confg) as fstream:
     param = json.load(fstream)
 
 os.system("mkdir -p " + param['results_path'])
+os.system("mkdir -p " + param['hpx_cats_filt_path'])
+os.system("mkdir -p " + param['ftp_path'])
 
 hdu_ngp = fits.open(param['red_maps_path'] +
                     "/SFD_dust_4096_ngp.fits", memmap=True)
@@ -76,11 +80,9 @@ mean_mass = (np.min(m_ini_iso[g_iso + mM_mean < param['mmax']]) +
 
 print('Mean mass (M_sun): {:.2f}'.format(mean_mass))
 
-
-hpx_ftp = make_footprint(param['ra_min'], param['ra_max'], param['dec_min'], param['dec_max'],
-                         param['nside_ftp'], output_path=param['results_path'])
+hpx_ftp = make_footprint(param)
                          
-area_sampled = len(hpx_ftp) * hp.nside2pixarea(param['nside_ftp'], degrees=True)
+area_sampled = estimation_area(param)
 
 if (param['survey'] == 'lsst') and (area_sampled < 300.):
     mode = 'expand'
@@ -119,17 +121,23 @@ else:
 # | is_good_match        | boolean          |
 # | is_unique_truth_entry| boolean          |
 
+ipix_files = select_ipix(param['nside_infile'], param['ra_min'], param['ra_max'],
+                         param['dec_min'], param['dec_max'], True)
+
+@python_app
+def filter_ipix_stars_app(ipix, param, ngp, sgp):
+
+    from ga_sim import filter_ipix_stars
+
+    filter_ipix_stars(ipix, param, ngp, sgp)
+
 print('Now reading catalog.')
 
-RA, DEC, MAG_G, MAGERR_G, MAG_R, MAGERR_R = read_cat(
-    param['vac_ga'], param['ra_min'], param['ra_max'], param['dec_min'], param['dec_max'],
-    param['mmin'], param['mmax'], param['cmin'], param['cmax'],
-    param['survey'] +
-    "_derred.fits", 1.17450, 0.86666, ngp, sgp, param['results_path'],
-    param['results_path'] + "/ftp_4096_nest.fits", param['nside3'], param['nside_ftp'],
-    mode, area_sampled)
+for i in ipix_files:
+    filter_ipix_stars_app(i, param, ngp, sgp)
 
-
+resize_ipix_cats(ipix_files, param, mode, area_sampled)
+exit()
 print('Now generating cluster file.')
 
 RA_pix, DEC_pix, r_exp, ell, pa, dist, mass, mM, hp_sample_un = gen_clus_file(
@@ -214,7 +222,7 @@ for i in range(len(hp_sample_un)):
         param['comp_mag_ref'],
         param['comp_mag_max'],
     )
-
+'''
 print('Now joining catalog.')
 
 mockcat = join_cat(
@@ -239,14 +247,12 @@ mockcat = join_cat(
     output_path=param['results_path'])
 
 print('Now spliting catalog')
-
+'''
 os.makedirs(param['hpx_cats_path'], exist_ok=True)
 
 os.makedirs(param['hpx_cats_clean_path'], exist_ok=True)
 
-ipix_cats = split_files(mockcat, 'ra', 'dec',
-                        param['nside_ini'], param['hpx_cats_path'])
-
+ipix_cats = glob.glob(param['hpx_cats_path'] + '/*.fits')
 
 print('This is the most time consuming part: cleaning the stars from crowding.')
 
@@ -264,21 +270,21 @@ def clean_input_cat_dist_app(i, param):
 
 
 for i in ipix_cats:
-    print(i)
     results_from_clear.append(clean_input_cat_dist_app(i, param))
 
 outputs = [r.result() for r in results_from_clear]
 
 print('Total of {:d} pixels were cleaned from crowding fields.'.format(
-    np.sum(outputs)))
+    int(np.sum(outputs))))
 # In[ ]:
 
 ipix_clean_cats = [i.replace(
     param['hpx_cats_path'], param['hpx_cats_clean_path']) for i in ipix_cats]
 
+'''
 join_cats_clean(ipix_clean_cats,
                 param['final_cat'], param['ra_str'], param['dec_str'])
-
+'''
 print('Almost done.')
 
 sim_clus_feat = write_sim_clus_features(
