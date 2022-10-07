@@ -38,6 +38,8 @@ from time import sleep
 from tqdm import tqdm
 import condor
 import sys
+# sys.path.append('/lustre/t1/cl/lsst/gawa_project/adriano.pieres/ga_sim/ga_sim')
+# sys.path.append('/lustre/t1/cl/lsst/gawa_project/adriano.pieres/ga_sim')
 
 parsl.clear()
 parsl.load(condor.get_config('htcondor'))
@@ -137,7 +139,7 @@ for i in ipix_files:
     filter_ipix_stars_app(i, param, ngp, sgp)
 
 resize_ipix_cats(ipix_files, param, mode, area_sampled)
-exit()
+
 print('Now generating cluster file.')
 
 RA_pix, DEC_pix, r_exp, ell, pa, dist, mass, mM, hp_sample_un = gen_clus_file(
