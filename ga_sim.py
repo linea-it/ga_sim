@@ -1,41 +1,23 @@
 from ga_sim import (
     make_footprint,
-    faker,
-    join_cat,
     write_sim_clus_features,
     download_iso,
-    filter_ipix_stars,
     gen_clus_file,
     read_error,
     clus_file_results,
-    join_cats_clean,
-    split_files,
-    clean_input_cat_dist,
     export_results,
     select_ipix,
     resize_ipix_cats,
-    estimation_area,
-    join_sim_field_stars
+    estimation_area
 )
 
 import numpy as np
-from astropy.coordinates import SkyCoord
-from astropy import units as u
-from astropy.table import Table
 import astropy.io.fits as fits
-from astropy.io.fits import getdata
-from pathlib import Path
-import healpy as hp
-import sqlalchemy
 import json
 import os
-import sys
 import glob
 import parsl
-from parsl.app.app import python_app, bash_app
-from parsl.configs.local_threads import config
-from time import sleep
-from tqdm import tqdm
+from parsl.app.app import python_app
 import condor
 import sys
 
@@ -88,7 +70,7 @@ print('Mean mass (M_sun): {:.2f}'.format(mean_mass))
 # Making footprint
 hpx_ftp = make_footprint(param)
 
-# Calculating area sampled and defining mode       
+# Calculating area sampled and defining mode
 area_sampled = estimation_area(param)
 
 if (param['survey'] == 'lsst') and (area_sampled < 300.):
@@ -96,22 +78,30 @@ if (param['survey'] == 'lsst') and (area_sampled < 300.):
 else:
     mode = 'cutout'
 
-# Selecting input files and filtering by magnitude and color ranges and 
+# Selecting input files and filtering by magnitude and color ranges and
 # correcting for extinction
 ipix_files = select_ipix(param['nside_infile'], param['ra_min'], param['ra_max'],
                          param['dec_min'], param['dec_max'], True)
+
 
 @python_app
 def filter_ipix_stars_app(ipix, param, ngp, sgp):
 
     from ga_sim import filter_ipix_stars
 
-    filter_ipix_stars(ipix, param, ngp, sgp)
+    aaa = filter_ipix_stars(ipix, param, ngp, sgp)
 
-print('Now reading catalog.')
+    return aaa
+
+res = []
 
 for i in ipix_files:
-    filter_ipix_stars_app(i, param, ngp, sgp)
+    res.append(filter_ipix_stars_app(i, param, ngp, sgp))
+
+outputs = [r.result() for r in res]
+
+print('Total of {:d} pixels read and filtered.'.format(
+    int(np.sum(outputs))))
 
 # Expanding catalog depending on the case
 resize_ipix_cats(ipix_files, param, mode, area_sampled)
@@ -120,31 +110,14 @@ resize_ipix_cats(ipix_files, param, mode, area_sampled)
 print('Now generating cluster file.')
 
 RA_pix, DEC_pix, r_exp, ell, pa, dist, mass, mM, hp_sample_un = gen_clus_file(
-    param['ra_min'],
-    param['ra_max'],
-    param['dec_min'],
-    param['dec_max'],
-    param['nside_ini'],
-    param['border_extract'],
-    param['mM_min'],
-    param['mM_max'],
-    param['log10_rexp_min'],
-    param['log10_rexp_max'],
-    param['log10_mass_min'],
-    param['log10_mass_max'],
-    param['ell_min'],
-    param['ell_max'],
-    param['pa_min'],
-    param['pa_max'],
-    param['results_path']
-)
+    param)
 
 # Loading photometric errors
 mag1_, err1_, err2_ = read_error(param['file_error'], 0.000, 0.000)
 
-
 # Simulating stellar clusters.
 print('Ready to simulate clusters.')
+
 
 @python_app
 def faker_app(N_stars_cmd, frac_bin, IMF_author, x0, y0, rexp, ell_, pa, dist, hpx, param, mag1_, err1_, err2_, output_path, mag_ref_comp,
@@ -153,61 +126,24 @@ def faker_app(N_stars_cmd, frac_bin, IMF_author, x0, y0, rexp, ell_, pa, dist, h
 
     from ga_sim import faker
 
-    faker(
-        N_stars_cmd,
-        frac_bin,
-        IMF_author,
-        x0,
-        y0,
-        rexp,
-        ell_,
-        pa,
-        dist,
-        hpx,
-        param['cmin'],
-        param['cmax'],
-        param['mmin'],
-        param['mmax'],
-        mag1_,
-        err1_,
-        err2_,
-        param['file_iso'],
-        output_path,
-        mag_ref_comp,
-        comp_mag_ref,
-        comp_mag_max,
-    )
+    faker(N_stars_cmd, frac_bin, IMF_author, x0, y0, rexp, ell_, pa, dist, hpx, param['cmin'], param['cmax'],
+          param['mmin'], param['mmax'], mag1_, err1_, err2_, param['file_iso'], output_path, mag_ref_comp,
+          comp_mag_ref, comp_mag_max)
 
 
 fake_clus_path = param['results_path'] + '/fake_clus'
 
 for i in range(len(hp_sample_un)):
     N_stars_cmd = int(mass[i] / mean_mass)
-    faker_app(
-        N_stars_cmd,
-        param['frac_bin'],
-        param['IMF_author'],
-        RA_pix[i],
-        DEC_pix[i],
-        r_exp[i],
-        ell[i],
-        pa[i],
-        dist[i],
-        hp_sample_un[i],
-        param,
-        mag1_,
-        err1_,
-        err2_,
-        fake_clus_path,
-        param['mag_ref_comp'],
-        param['comp_mag_ref'],
-        param['comp_mag_max'],
-    )
+    faker_app(N_stars_cmd, param['frac_bin'], param['IMF_author'], RA_pix[i], DEC_pix[i], r_exp[i], ell[i],
+              pa[i], dist[i], hp_sample_un[i], param, mag1_, err1_, err2_, fake_clus_path,
+              param['mag_ref_comp'], param['comp_mag_ref'], param['comp_mag_max'])
 
 ipix_ini = select_ipix(param['nside_ini'], param['ra_min'], param['ra_max'],
-                         param['dec_min'], param['dec_max'], True)
+                       param['dec_min'], param['dec_max'], True)
 
 results_join = []
+
 
 @python_app
 def join_sim_field_stars_app(ipix, param):
@@ -217,6 +153,7 @@ def join_sim_field_stars_app(ipix, param):
     aaaa = join_sim_field_stars(ipix, param)
 
     return aaaa
+
 
 print('Now starting to join simulations and field stars.')
 
@@ -234,13 +171,14 @@ print('This is the most time consuming part: cleaning the stars from crowding.')
 
 results_from_clear = []
 
+
 @python_app
 def clean_input_cat_dist_app(i, param):
 
     from ga_sim import clean_input_cat_dist
 
-    aaaa = clean_input_cat_dist(param['hpx_cats_clus_field'], param['hpx_cats_clean_path'], i,
-                                param['ra_str'], param['dec_str'], param['min_dist_arcsec'], 0.01)
+    aaaa = clean_input_cat_dist(param['hpx_cats_clean_path'], i, param['ra_str'],
+                                param['dec_str'], param['min_dist_arcsec'], 0.01)
     return aaaa
 
 
@@ -260,8 +198,11 @@ print('Almost done.')
 # Solve name of variable
 sim_clus_feat = write_sim_clus_features(param, hp_sample_un, mM)
 
-clus_file_results(param['star_clusters_simulated'], sim_clus_feat, param['results_path'] + '/objects.dat')
+clus_file_results(param['star_clusters_simulated'],
+                  sim_clus_feat, param['results_path'] + '/objects.dat')
 
 os.system('jupyter nbconvert --execute --to html --EmbedImagesPreprocessor.embed_images=True plots_sim.ipynb')
 
-export_results(param['export_path'], param['results_path'], param['copy_html_path'])
+export_results(param['export_path'], param['results_path'],
+               param['copy_html_path'])
+

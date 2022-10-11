@@ -11,7 +11,6 @@ from ga_sim.ga_sim import (
     join_cat,
     snr_estimate,
     write_sim_clus_features,
-    SplitFtpHPX,
     radec2GCdist,
     remove_close_stars,
     download_iso,
@@ -20,9 +19,7 @@ from ga_sim.ga_sim import (
     gen_clus_file,
     read_error,
     clus_file_results,
-    join_cats_clean,
     split_files,
-    clean_input_cat,
     clean_input_cat_dist,
     export_results,
     select_ipix,
@@ -35,6 +32,7 @@ from ga_sim.plot import (
     plot_ftp,
     plots_ang_size,
     plot_err,
-    plot_cmd_clean
+    plot_cmd_clean,
+    read_final_cat
 )
 
