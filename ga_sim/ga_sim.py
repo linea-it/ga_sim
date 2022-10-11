@@ -43,6 +43,48 @@ def estimation_area(param):
     return n_ipix * hp.nside2pixarea(nside_ftp, degrees=True)
 
 
+def join_sim_field_stars(i, param):
+
+    globals().update(param)
+
+    filepath = Path(hpx_cats_path, "%s.fits" % i)
+    data = getdata(filepath)
+    RA = data['ra']
+    DEC = data['dec']
+    MAG_G = data['mag_g_with_err']
+    MAGERR_G = data['magerr_g']
+    MAG_R = data['mag_r_with_err']
+    MAGERR_R = data['magerr_r']
+    GC = np.repeat(0, len(RA))
+
+    try:
+        RA_c, DEC_c, MAGG_c, MAGERR_G_c, MAGR_c, MAGERR_R_c = np.loadtxt(results_path + '/fake_clus/%s_clus.dat' % i, usecols=(0,1,2,3,4,5), unpack=True)
+        GC_c = np.repeat(1, len(RA_c))
+
+        RA = np.concatenate((RA, RA_c), axis=0)
+        DEC = np.concatenate((DEC, DEC_c), axis=0)
+        MAG_G = np.concatenate((MAG_G, MAGG_c), axis=0)
+        MAG_R = np.concatenate((MAG_R, MAGR_c), axis=0)
+        MAGERR_G = np.concatenate((MAGERR_G, MAGERR_G_c), axis=0)
+        MAGERR_R = np.concatenate((MAGERR_R, MAGERR_R_c), axis=0)
+        GC = np.concatenate((GC, GC_c), axis=0)
+    except:
+        print('No ipix populated with cluster.')
+
+    col1 = fits.Column(name="ra", format="D", array=RA)
+    col2 = fits.Column(name="dec", format="D", array=DEC)
+    col3 = fits.Column(name="mag_g_with_err", format="E", array=MAG_G)
+    col4 = fits.Column(name="mag_r_with_err", format="E", array=MAG_R)
+    col5 = fits.Column(name="magerr_g", format="E", array=MAGERR_G)
+    col6 = fits.Column(name="magerr_r", format="E", array=MAGERR_R)
+    col7 = fits.Column(name="GC", format="I", array=GC)
+    cols = fits.ColDefs([col1, col2, col3, col4, col5, col6, col7])
+    tbhdu = fits.BinTableHDU.from_columns(cols)
+    tbhdu.writeto(hpx_cats_clus_field + '/' + str(i) + '.fits', overwrite=True)
+
+    return 1
+        
+
 def resize_ipix_cats(ipix_files, param, mode, area_sampled):
 
     globals().update(param)
@@ -119,12 +161,10 @@ def filter_ipix_stars(i, param, ngp, sgp):
         MAGERR_R = data['MAGERR_R']
         EXT = data['EXTENDEDNESS']
         
-        cond1 = (MAG_G == None) | (MAG_R == None)
-
-        MAG_G = np.where(cond1, -99, MAG_G)
-        MAGERR_G = np.where(cond1, -99, MAGERR_G)
-        MAG_R = np.where(cond1, -99, MAG_R)
-        MAGERR_R = np.where(cond1, -99, MAGERR_R)
+        MAG_G = np.nan_to_num(MAG_G, copy=True, nan=-99)
+        MAGERR_G = np.where(MAGERR_G, copy=True, nan=-99)
+        MAG_R = np.where(MAG_R, copy=True, nan=-99)
+        MAGERR_R = np.where(MAGERR_R, copy=True, nan=-99)
 
         cond2 = (RA > ra_min)&(RA < ra_max)&(DEC > dec_min)&(DEC < dec_max)&(EXT == 0)
         
@@ -157,7 +197,6 @@ def filter_ipix_stars(i, param, ngp, sgp):
         cols = fits.ColDefs([col0, col1, col2, col3])
         tbhdu = fits.BinTableHDU.from_columns(cols)
         filepath2 = Path(hpx_cats_filt_path, "{}.fits".format(str(i)))
-        print('Saving to {}'.format(filepath2))
         tbhdu.writeto(filepath2, overwrite=True)
     except:
         print('Missing file ipix {:d}'.format(i))
@@ -249,7 +288,7 @@ def king_prof(N_stars, rc, rt):
     return np.multiply(rad_star, rt)
 
 
-def clean_input_cat_dist(dir_name, file_name, ra_str, dec_str, max_dist_arcsec, init_dist):
+def clean_input_cat_dist(input_path, dir_name, file_name, ra_str, dec_str, max_dist_arcsec, init_dist):
     """ This function removes stars closer than max_dist_arcsec. That is specially significant to
     stellar clusters, where the stellar crowding in images creates a single
     object in cluster's center, but many star in the periphery.
@@ -289,7 +328,7 @@ def clean_input_cat_dist(dir_name, file_name, ra_str, dec_str, max_dist_arcsec, 
         DEC_ = DEC[cond]
         dist = dist_ang(RA_, DEC_, j, DEC[i])
         if len(dist) > 1:
-            if (sorted(set(dist))[1] > max_dist_arcsec / 3600):
+            if (sorted(dist)[1] > max_dist_arcsec / 3600):
                 clean_idx.append(i)
         else:
             clean_idx.append(i)
@@ -303,7 +342,6 @@ def clean_input_cat_dist(dir_name, file_name, ra_str, dec_str, max_dist_arcsec, 
             name=label_columns[i], format=t_format[i], array=data_clean[:, i])
     cols = fits.ColDefs([col[i] for i in range(len(label_columns))])
     tbhdu = fits.BinTableHDU.from_columns(cols)
-
     tbhdu.writeto(output_file, overwrite=True)
 
     return 1
@@ -1580,19 +1618,7 @@ def snr_estimate(
     return len(r_star[r_star < inner_circle]) / np.sqrt(N_bg_equal_area)
 
 
-def write_sim_clus_features(
-    mockcat,
-    mockcat_clean,
-    hp_sample_un,
-    nside_ini,
-    mM,
-    output_path,
-    file_error,
-    file_mask,
-    snr_inner_circle_arcmin,
-    snr_rin_annulus_arcmin,
-    snr_rout_annulus_arcmin
-):
+def write_sim_clus_features(param, hp_sample_un, mM):
     """
     Write a few features of the clusters in a file called 'N_stars,dat'.
     The columns of the file are:
@@ -1611,98 +1637,104 @@ def write_sim_clus_features(
     for two clusters with the same mass (stars are a numerical realization
     within an IMF).
     """
+    
+    globals().update(param)
 
-    hdu = fits.open(mockcat, memmap=True)
-    GC = hdu[1].data.field("GC")
-    RA = hdu[1].data.field("ra")
-    DEC = hdu[1].data.field("dec")
-    MAG_G = hdu[1].data.field("mag_g_with_err")
-    MAG_R = hdu[1].data.field("mag_r_with_err")
-    HPX64 = hdu[1].data.field("HPX64")
+    for i in hp_sample_un:
+        hdu = fits.open(hpx_cats_clus_field + '/' + str(i) + '.fits', memmap=True)
+        GC = hdu[1].data.field("GC")
+        RA = hdu[1].data.field("ra")
+        DEC = hdu[1].data.field("dec")
+        MAG_G = hdu[1].data.field("mag_g_with_err")
+        MAG_R = hdu[1].data.field("mag_r_with_err")
+        # HPX64 = hdu[1].data.field("HPX64")
+        HPX64 = hp.ang2pix(64, RA, DEC, nest=True, lonlat=True)
 
-    hdu2 = fits.open(mockcat_clean, memmap=True)
-    GC_clean = hdu2[1].data.field("GC")
-    RA_clean = hdu2[1].data.field("ra")
-    DEC_clean = hdu2[1].data.field("dec")
-    MAG_G_clean = hdu2[1].data.field("mag_g_with_err")
-    MAG_R_clean = hdu2[1].data.field("mag_r_with_err")
-    HPX64_clean = hdu2[1].data.field("HPX64")
+        hdu2 = fits.open(hpx_cats_clean_path + '/' + str(i) + '.fits', memmap=True)
+        GC_clean = hdu2[1].data.field("GC")
+        RA_clean = hdu2[1].data.field("ra")
+        DEC_clean = hdu2[1].data.field("dec")
+        MAG_G_clean = hdu2[1].data.field("mag_g_with_err")
+        MAG_R_clean = hdu2[1].data.field("mag_r_with_err")
+        # HPX64_clean = hdu2[1].data.field("HPX64")
+        HPX64_clean = hp.ang2pix(64, RA_clean, DEC_clean, nest=True, lonlat=True)
 
-    filepath = Path(output_path, "n_stars.dat")
 
-    with open(filepath, "w") as out_file:
-        for j in range(len(hp_sample_un)):
-            # try:
-            cond = HPX64 == hp_sample_un[j]
-            RA__, DEC__, MAGG__, MAGR__ = RA[cond], DEC[cond], MAG_G[cond], MAG_R[cond]
-            cond_clean = HPX64_clean == hp_sample_un[j]
-            RA__clean, DEC__clean, MAGG__clean, MAGR__clean = RA_clean[cond_clean], DEC_clean[
-                cond_clean], MAG_G_clean[cond_clean], MAG_R_clean[cond_clean]
+        filepath = Path(results_path, "n_stars.dat")
 
-            # plt.scatter(RA__, DEC__)
-            # plt.show()
-            SNR = snr_estimate(
-                RA__,
-                DEC__,
-                MAGG__,
-                MAGG__ - MAGR__,
-                hp_sample_un[j],
-                nside_ini,
-                mM[j],
-                snr_inner_circle_arcmin / 60.,
-                snr_rin_annulus_arcmin / 60.,
-                snr_rout_annulus_arcmin / 60.,
-                file_error,
-                file_mask
+        with open(filepath, "a") as out_file:
+            for j in range(len(hp_sample_un)):
+                # try:
+                cond = HPX64 == hp_sample_un[j]
+                RA__, DEC__, MAGG__, MAGR__ = RA[cond], DEC[cond], MAG_G[cond], MAG_R[cond]
+                cond_clean = HPX64_clean == hp_sample_un[j]
+                RA__clean, DEC__clean, MAGG__clean, MAGR__clean = RA_clean[cond_clean], DEC_clean[
+                    cond_clean], MAG_G_clean[cond_clean], MAG_R_clean[cond_clean]
+
+                # plt.scatter(RA__, DEC__)
+                # plt.show()
+                SNR = snr_estimate(
+                    RA__,
+                    DEC__,
+                    MAGG__,
+                    MAGG__ - MAGR__,
+                    hp_sample_un[j],
+                    nside_ini,
+                    mM[j],
+                    snr_inner_circle_arcmin / 60.,
+                    snr_rin_annulus_arcmin / 60.,
+                    snr_rout_annulus_arcmin / 60.,
+                    file_error,
+                    file_mask
+                    )
+                SNR_clean = snr_estimate(
+                    RA__clean,
+                    DEC__clean,
+                    MAGG__clean,
+                    MAGG__clean - MAGR__clean,
+                    hp_sample_un[j],
+                    nside_ini,
+                    mM[j],
+                    snr_inner_circle_arcmin / 60.,
+                    snr_rin_annulus_arcmin / 60.,
+                    snr_rout_annulus_arcmin / 60.,
+                   file_error,
+                    file_mask
+                    )
+
+                cond_clus = (cond) & (GC == 1)
+                cond_clus_clean = (cond_clean) & (GC_clean == 1)
+
+                MAGG_clus, MAGR_clus = (
+                    MAG_G[cond_clus],
+                    MAG_R[cond_clus],
                 )
-            SNR_clean = snr_estimate(
-                RA__clean,
-                DEC__clean,
-                MAGG__clean,
-                MAGG__clean - MAGR__clean,
-                hp_sample_un[j],
-                nside_ini,
-                mM[j],
-                snr_inner_circle_arcmin / 60.,
-                snr_rin_annulus_arcmin / 60.,
-                snr_rout_annulus_arcmin / 60.,
-                file_error,
-                file_mask
+                flux_g = 10 ** (-0.4 * MAGG_clus)
+                flux_r = 10 ** (-0.4 * MAGR_clus)
+                M_abs_g = -2.5 * np.log10(np.sum(flux_g)) - mM[j]
+                M_abs_r = -2.5 * np.log10(np.sum(flux_r)) - mM[j]
+                M_abs_V = (
+                    M_abs_g - 0.58 * (M_abs_g - M_abs_r) - 0.01
+                )  # in V band following Jester 2005
+
+                MAGG_clus_clean, MAGR_clus_clean = (
+                    MAG_G_clean[cond_clus_clean],
+                    MAG_R_clean[cond_clus_clean],
                 )
+                flux_g_clean = 10 ** (-0.4 * MAGG_clus_clean)
+                flux_r_clean = 10 ** (-0.4 * MAGR_clus_clean)
+                M_abs_g_clean = -2.5 * np.log10(np.sum(flux_g_clean)) - mM[j]
+                M_abs_r_clean = -2.5 * np.log10(np.sum(flux_r_clean)) - mM[j]
+                M_abs_V_clean = M_abs_g_clean - 0.58 * \
+                    (M_abs_g_clean - M_abs_r_clean) - 0.01
 
-            cond_clus = (cond) & (GC == 1)
-            cond_clus_clean = (cond_clean) & (GC_clean == 1)
-
-            MAGG_clus, MAGR_clus = (
-                MAG_G[cond_clus],
-                MAG_R[cond_clus],
-            )
-            flux_g = 10 ** (-0.4 * MAGG_clus)
-            flux_r = 10 ** (-0.4 * MAGR_clus)
-            M_abs_g = -2.5 * np.log10(np.sum(flux_g)) - mM[j]
-            M_abs_r = -2.5 * np.log10(np.sum(flux_r)) - mM[j]
-            M_abs_V = (
-                M_abs_g - 0.58 * (M_abs_g - M_abs_r) - 0.01
-            )  # in V band following Jester 2005
-
-            MAGG_clus_clean, MAGR_clus_clean = (
-                MAG_G_clean[cond_clus_clean],
-                MAG_R_clean[cond_clus_clean],
-            )
-            flux_g_clean = 10 ** (-0.4 * MAGG_clus_clean)
-            flux_r_clean = 10 ** (-0.4 * MAGR_clus_clean)
-            M_abs_g_clean = -2.5 * np.log10(np.sum(flux_g_clean)) - mM[j]
-            M_abs_r_clean = -2.5 * np.log10(np.sum(flux_r_clean)) - mM[j]
-            M_abs_V_clean = M_abs_g_clean - 0.58 * \
-                (M_abs_g_clean - M_abs_r_clean) - 0.01
-
-            print(
-                "{:d} {:d} {:.2f} {:.2f} {:d} {:.2f} {:.2f}".format(
-                    hp_sample_un[j], len(RA[cond_clus]), M_abs_V, SNR,
-                    len(RA_clean[cond_clus_clean]), M_abs_V_clean, SNR_clean
-                ), file=out_file,
-            )
-    return filepath
+                print(
+                    "{:d} {:d} {:.2f} {:.2f} {:d} {:.2f} {:.2f}".format(
+                        hp_sample_un[j], len(RA[cond_clus]), M_abs_V, SNR,
+                        len(RA_clean[cond_clus_clean]), M_abs_V_clean, SNR_clean
+                    ), file=out_file,
+                )
+    out_file.close()
 
 
 def SplitFtpHPX(

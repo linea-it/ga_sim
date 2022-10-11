@@ -26,7 +26,8 @@ from ga_sim.ga_sim import (
     clean_input_cat_dist,
     export_results,
     select_ipix,
-    estimation_area
+    estimation_area,
+    join_sim_field_stars
 )
 from ga_sim.plot import (
     plot_clusters_clean,

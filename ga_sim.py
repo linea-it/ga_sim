@@ -10,12 +10,12 @@ from ga_sim import (
     clus_file_results,
     join_cats_clean,
     split_files,
-    clean_input_cat,
     clean_input_cat_dist,
     export_results,
     select_ipix,
     resize_ipix_cats,
-    estimation_area
+    estimation_area,
+    join_sim_field_stars
 )
 
 import numpy as np
@@ -38,9 +38,8 @@ from time import sleep
 from tqdm import tqdm
 import condor
 import sys
-# sys.path.append('/lustre/t1/cl/lsst/gawa_project/adriano.pieres/ga_sim/ga_sim')
-# sys.path.append('/lustre/t1/cl/lsst/gawa_project/adriano.pieres/ga_sim')
 
+# Loading config and files, creating folders
 parsl.clear()
 parsl.load(condor.get_config('htcondor'))
 parsl.set_stream_logger()
@@ -50,9 +49,12 @@ confg = "ga_sim.json"
 with open(confg) as fstream:
     param = json.load(fstream)
 
-os.system("mkdir -p " + param['results_path'])
-os.system("mkdir -p " + param['hpx_cats_filt_path'])
-os.system("mkdir -p " + param['ftp_path'])
+os.makedirs(param['results_path'], exist_ok=True)
+os.makedirs(param['ftp_path'], exist_ok=True)
+os.makedirs(param['hpx_cats_clus_field'], exist_ok=True)
+os.makedirs(param['hpx_cats_path'], exist_ok=True)
+os.makedirs(param['hpx_cats_clean_path'], exist_ok=True)
+os.makedirs(param['hpx_cats_filt_path'], exist_ok=True)
 
 hdu_ngp = fits.open(param['red_maps_path'] +
                     "/SFD_dust_4096_ngp.fits", memmap=True)
@@ -62,6 +64,7 @@ hdu_sgp = fits.open(param['red_maps_path'] +
                     "/SFD_dust_4096_sgp.fits", memmap=True)
 sgp = hdu_sgp[0].data
 
+# Downloading isochrone and printing some information
 
 download_iso(param['padova_version_code'], param['survey'], 0.0152 * (10 ** param['MH_simulation']),
              param['age_simulation'], param['av_simulation'], param['file_iso'], 5)
@@ -82,8 +85,10 @@ mean_mass = (np.min(m_ini_iso[g_iso + mM_mean < param['mmax']]) +
 
 print('Mean mass (M_sun): {:.2f}'.format(mean_mass))
 
+# Making footprint
 hpx_ftp = make_footprint(param)
-                         
+
+# Calculating area sampled and defining mode       
 area_sampled = estimation_area(param)
 
 if (param['survey'] == 'lsst') and (area_sampled < 300.):
@@ -91,38 +96,8 @@ if (param['survey'] == 'lsst') and (area_sampled < 300.):
 else:
     mode = 'cutout'
 
-# DP0 data: tablename for DP0: dp0.dp0_full_des
-# extendedness: 0 for stars, 1 for galaxies
-#
-# |       Column         |       Type       |
-# | :------------------- | ---------------: |
-# | coadd_objects_id     | bigint           |
-# | z_true               | real             |
-# | ra                   | double precision |
-# | dec                  | double precision |
-# | extendedness         | double precision |
-# | mag_u                | double precision |
-# | mag_g                | double precision |
-# | mag_r                | double precision |
-# | mag_i                | double precision |
-# | mag_z                | double precision |
-# | mag_y                | double precision |
-# | magerr_u             | double precision |
-# | magerr_g             | double precision |
-# | magerr_r             | double precision |
-# | magerr_i             | double precision |
-# | magerr_z             | double precision |
-# | magerr_y             | double precision |
-# | host_galaxy          | bigint           |
-# | is_variable          | integer          |
-# | is_pointsource       | integer          |
-# | truth_type           | bigint           |
-# | match_sep            | double precision |
-# | cosmodc2_hp          | bigint           |
-# | cosmodc2_id          | bigint           |
-# | is_good_match        | boolean          |
-# | is_unique_truth_entry| boolean          |
-
+# Selecting input files and filtering by magnitude and color ranges and 
+# correcting for extinction
 ipix_files = select_ipix(param['nside_infile'], param['ra_min'], param['ra_max'],
                          param['dec_min'], param['dec_max'], True)
 
@@ -138,8 +113,10 @@ print('Now reading catalog.')
 for i in ipix_files:
     filter_ipix_stars_app(i, param, ngp, sgp)
 
+# Expanding catalog depending on the case
 resize_ipix_cats(ipix_files, param, mode, area_sampled)
 
+# Generating features of simulated clusters
 print('Now generating cluster file.')
 
 RA_pix, DEC_pix, r_exp, ell, pa, dist, mass, mM, hp_sample_un = gen_clus_file(
@@ -162,10 +139,12 @@ RA_pix, DEC_pix, r_exp, ell, pa, dist, mass, mM, hp_sample_un = gen_clus_file(
     param['results_path']
 )
 
+# Loading photometric errors
 mag1_, err1_, err2_ = read_error(param['file_error'], 0.000, 0.000)
 
-print('Ready to simulate clusters.')
 
+# Simulating stellar clusters.
+print('Ready to simulate clusters.')
 
 @python_app
 def faker_app(N_stars_cmd, frac_bin, IMF_author, x0, y0, rexp, ell_, pa, dist, hpx, param, mag1_, err1_, err2_, output_path, mag_ref_comp,
@@ -224,49 +203,43 @@ for i in range(len(hp_sample_un)):
         param['comp_mag_ref'],
         param['comp_mag_max'],
     )
-'''
-print('Now joining catalog.')
 
-mockcat = join_cat(
-    param['ra_min'],
-    param['ra_max'],
-    param['dec_min'],
-    param['dec_max'],
-    hp_sample_un,
-    param['survey'],
-    RA,
-    DEC,
-    MAG_G,
-    MAG_R,
-    MAGERR_G,
-    MAGERR_R,
-    param['nside_ini'],
-    param['mmax'],
-    param['mmin'],
-    param['cmin'],
-    param['cmax'],
-    input_path=fake_clus_path,
-    output_path=param['results_path'])
+ipix_ini = select_ipix(param['nside_ini'], param['ra_min'], param['ra_max'],
+                         param['dec_min'], param['dec_max'], True)
 
-print('Now spliting catalog')
-'''
-os.makedirs(param['hpx_cats_path'], exist_ok=True)
+results_join = []
 
-os.makedirs(param['hpx_cats_clean_path'], exist_ok=True)
+@python_app
+def join_sim_field_stars_app(ipix, param):
 
-ipix_cats = glob.glob(param['hpx_cats_path'] + '/*.fits')
+    from ga_sim import join_sim_field_stars
+
+    aaaa = join_sim_field_stars(ipix, param)
+
+    return aaaa
+
+print('Now starting to join simulations and field stars.')
+
+for i in ipix_ini:
+    results_join.append(join_sim_field_stars_app(i, param))
+
+outputs = [r.result() for r in results_join]
+
+print('Total of {:d} pixels were joint from clusters and fields.'.format(
+    int(np.sum(outputs))))
+
+ipix_cats = glob.glob(param['hpx_cats_clus_field'] + '/*.fits')
 
 print('This is the most time consuming part: cleaning the stars from crowding.')
 
 results_from_clear = []
-
 
 @python_app
 def clean_input_cat_dist_app(i, param):
 
     from ga_sim import clean_input_cat_dist
 
-    aaaa = clean_input_cat_dist(param['hpx_cats_clean_path'], i,
+    aaaa = clean_input_cat_dist(param['hpx_cats_clus_field'], param['hpx_cats_clean_path'], i,
                                 param['ra_str'], param['dec_str'], param['min_dist_arcsec'], 0.01)
     return aaaa
 
@@ -278,35 +251,17 @@ outputs = [r.result() for r in results_from_clear]
 
 print('Total of {:d} pixels were cleaned from crowding fields.'.format(
     int(np.sum(outputs))))
-# In[ ]:
 
 ipix_clean_cats = [i.replace(
     param['hpx_cats_path'], param['hpx_cats_clean_path']) for i in ipix_cats]
 
-'''
-join_cats_clean(ipix_clean_cats,
-                param['final_cat'], param['ra_str'], param['dec_str'])
-'''
 print('Almost done.')
 
-sim_clus_feat = write_sim_clus_features(
-    mockcat,
-    param['final_cat'],
-    hp_sample_un,
-    param['nside_ini'],
-    mM,
-    param['results_path'],
-    param['file_error'],
-    param['file_mask'],
-    param['snr_inner_circle_arcmin'],
-    param['snr_rin_annulus_arcmin'],
-    param['snr_rout_annulus_arcmin']
-)
+# Solve name of variable
+sim_clus_feat = write_sim_clus_features(param, hp_sample_un, mM)
 
-clus_file_results(param['star_clusters_simulated'],
-                  sim_clus_feat, param['results_path'] + '/objects.dat')
+clus_file_results(param['star_clusters_simulated'], sim_clus_feat, param['results_path'] + '/objects.dat')
 
 os.system('jupyter nbconvert --execute --to html --EmbedImagesPreprocessor.embed_images=True plots_sim.ipynb')
 
-export_results(param['export_path'], param['results_path'],
-               param['copy_html_path'])
+export_results(param['export_path'], param['results_path'], param['copy_html_path'])

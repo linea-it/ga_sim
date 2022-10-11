@@ -41,6 +41,7 @@
     "cat_infile_path": "/lustre/t1/cl/lsst/dp0_skinny/DP0/DP0_FULL/healpix",
     "hpx_cats_path": "/lustre/t1/cl/lsst/gawa_project/adriano.pieres/ga_sim/results/hpx_cats",
     "hpx_cats_filt_path": "/lustre/t1/cl/lsst/gawa_project/adriano.pieres/ga_sim/results/hpx_cats_filt",
+    "hpx_cats_clus_field": "/lustre/t1/cl/lsst/gawa_project/adriano.pieres/ga_sim/results/hpx_cats_clus_field",
     "hpx_cats_clean_path": "/lustre/t1/cl/lsst/gawa_project/adriano.pieres/ga_sim/results/hpx_cats_clean",
     "star_clusters_simulated": "/lustre/t1/cl/lsst/gawa_project/adriano.pieres/ga_sim/results/star_clusters_simulated.dat",
     "output_plots": "/lustre/t1/cl/lsst/gawa_project/adriano.pieres/ga_sim/results/plots",
