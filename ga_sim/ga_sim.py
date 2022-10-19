@@ -86,7 +86,7 @@ def join_sim_field_stars(i, param):
 
     globals().update(param)
 
-    filepath = Path(hpx_cats_path, "%s.fits" % i)
+    filepath = Path(hpx_cats_path, "%s" % i)
     data = getdata(filepath)
     RA = data['ra']
     DEC = data['dec']
@@ -98,18 +98,25 @@ def join_sim_field_stars(i, param):
 
     try:
         RA_c, DEC_c, MAGG_c, MAGERR_G_c, MAGR_c, MAGERR_R_c = np.loadtxt(
-            results_path + '/fake_clus/%s_clus.dat' % i, usecols=(0, 1, 2, 3, 4, 5), unpack=True)
-        GC_c = np.repeat(1, len(RA_c))
+            results_path + '/fake_clus/%s_clus.dat' % ((i.split('/')[-1])[:-5]), usecols=(0, 1, 2, 3, 4, 5), unpack=True)
 
-        RA = np.concatenate((RA, RA_c), axis=0)
-        DEC = np.concatenate((DEC, DEC_c), axis=0)
-        MAG_G = np.concatenate((MAG_G, MAGG_c), axis=0)
-        MAG_R = np.concatenate((MAG_R, MAGR_c), axis=0)
-        MAGERR_G = np.concatenate((MAGERR_G, MAGERR_G_c), axis=0)
-        MAGERR_R = np.concatenate((MAGERR_R, MAGERR_R_c), axis=0)
-        GC = np.concatenate((GC, GC_c), axis=0)
+        HPX = hp.ang2pix(nside_ini, RA_c, DEC_c, nest=True, lonlat=True)
+
+        cond = (HPX == int((i.split('/')[-1])[:-5]))&(RA_c > ra_min)&(RA_c < ra_max)&(DEC_c > dec_min)&(DEC_c < dec_max)
+
+        RA_, DEC_, MAGG_, MAGERR_G_, MAGR_, MAGERR_R_ = RA_c[cond], DEC_c[cond], MAGG_c[cond], MAGERR_G_c[cond], MAGR_c[cond], MAGERR_R_c[cond]
+
+        GC_ = np.repeat(1, len(RA_))
+
+        RA = np.concatenate((RA, RA_), axis=0)
+        DEC = np.concatenate((DEC, DEC_), axis=0)
+        MAG_G = np.concatenate((MAG_G, MAGG_), axis=0)
+        MAG_R = np.concatenate((MAG_R, MAGR_), axis=0)
+        MAGERR_G = np.concatenate((MAGERR_G, MAGERR_G_), axis=0)
+        MAGERR_R = np.concatenate((MAGERR_R, MAGERR_R_), axis=0)
+        GC = np.concatenate((GC, GC_), axis=0)
     except:
-        print('No ipix populated with cluster.')
+        print('No ipix {} populated with cluster.'.format(i.split('/')[-1]))
 
     col1 = fits.Column(name="ra", format="D", array=RA)
     col2 = fits.Column(name="dec", format="D", array=DEC)
@@ -120,7 +127,7 @@ def join_sim_field_stars(i, param):
     col7 = fits.Column(name="GC", format="I", array=GC)
     cols = fits.ColDefs([col1, col2, col3, col4, col5, col6, col7])
     tbhdu = fits.BinTableHDU.from_columns(cols)
-    tbhdu.writeto(hpx_cats_clus_field + '/' + str(i) + '.fits', overwrite=True)
+    tbhdu.writeto(hpx_cats_clus_field + '/' + i.split('/')[-1], overwrite=True)
 
     return 1
 
@@ -167,6 +174,10 @@ def resize_ipix_cats(ipix_files, param, mode, area_sampled):
     if mode == 'cutout':
         RA, DEC = d_star_real_cat(
             hpx_ftp_data, len(MAG_G_), nside3, nside_ftp)
+        MAG_G = MAG_G_
+        MAGERR_G = MAGERR_G_
+        MAG_R = MAG_R_
+        MAGERR_R = MAGERR_R_
     else:
         total_els = int(area_sampled * len(MAG_G_) / 300)
         RA, DEC = d_star_real_cat(
@@ -177,13 +188,22 @@ def resize_ipix_cats(ipix_files, param, mode, area_sampled):
         MAGERR_G = [MAGERR_G_[i] for i in idx_random]
         MAGERR_R = [MAGERR_R_[i] for i in idx_random]
 
-    HPX = hp.ang2pix(nside_ini, RA, DEC, nest=True, lonlat=True)
+    cond2 = (RA > ra_min) & (RA < ra_max) & (DEC > dec_min) & (DEC < dec_max)
+
+    RA_ = RA[cond2]
+    DEC_ = DEC[cond2]
+    MAG_G_ = [MAG_G[i] for i in range(len(MAG_G)) if cond2[i]]
+    MAGERR_G_ = [MAGERR_G[i] for i in range(len(MAG_G)) if cond2[i]]
+    MAG_R_ = [MAG_R[i] for i in range(len(MAG_G)) if cond2[i]]
+    MAGERR_R_ = [MAGERR_R[i] for i in range(len(MAG_G)) if cond2[i]]
+
+    HPX = hp.ang2pix(nside_ini, RA_, DEC_, nest=True, lonlat=True)
 
     idx_sort = np.argsort(HPX)
 
     HPX_sort = [HPX[i] for i in idx_sort]
-    RA_sort = [RA[i] for i in idx_sort]
-    DEC_sort = [DEC[i] for i in idx_sort]
+    RA_sort = [RA_[i] for i in idx_sort]
+    DEC_sort = [DEC_[i] for i in idx_sort]
 
     HPX_un = np.unique(HPX_sort)
 
@@ -194,13 +214,13 @@ def resize_ipix_cats(ipix_files, param, mode, area_sampled):
         col1 = fits.Column(name="dec", format="D",
                            array=list(compress(DEC_sort, cond)))
         col2 = fits.Column(name="mag_g_with_err", format="E",
-                           array=list(compress(MAG_G, cond)))
+                           array=list(compress(MAG_G_, cond)))
         col3 = fits.Column(name="mag_r_with_err", format="E",
-                           array=list(compress(MAG_R, cond)))
+                           array=list(compress(MAG_R_, cond)))
         col4 = fits.Column(name="magerr_g", format="E",
-                           array=list(compress(MAGERR_G, cond)))
+                           array=list(compress(MAGERR_G_, cond)))
         col5 = fits.Column(name="magerr_r", format="E",
-                           array=list(compress(MAGERR_R, cond)))
+                           array=list(compress(MAGERR_R_, cond)))
         # col7 = fits.Column(name="HPX64", format="K", array=HPX64)
         cols = fits.ColDefs([col0, col1, col2, col3, col4, col5])
         tbhdu = fits.BinTableHDU.from_columns(cols)
@@ -257,19 +277,25 @@ def filter_ipix_stars(i, param, ngp, sgp):
             dec=DEC * u.degree,
             frame='icrs'
         )
+
         L = c.galactic.l.degree
         B = c.galactic.b.degree
 
         MAG_G -= Ag_AV * get_av(L, B, ngp, sgp)
         MAG_R -= Ar_AV * get_av(L, B, ngp, sgp)
 
-        cond = (np.abs(MAG_G) < mmax) & (np.abs(MAG_G) > mmin) & (
-            MAG_G-MAG_R > cmin) & (MAG_G-MAG_R < cmax)
+        cond = (MAG_G < mmax) & (MAG_G > mmin) & (
+            MAG_G-MAG_R > cmin) & (MAG_G-MAG_R < cmax) & (MAGERR_G > 0.) & (MAGERR_R > 0.)
 
-        col0 = fits.Column(name="MAG_G", format="E", array=MAG_G)
-        col1 = fits.Column(name="MAGERR_G", format="E", array=MAGERR_G)
-        col2 = fits.Column(name="MAG_R", format="E", array=MAG_R)
-        col3 = fits.Column(name="MAGERR_R", format="E", array=MAGERR_R)
+        MAG_G_ = MAG_G[cond]
+        MAG_R_ = MAG_R[cond]
+        MAGERR_G_ = MAGERR_G[cond]
+        MAGERR_R_ = MAGERR_R[cond]
+
+        col0 = fits.Column(name="MAG_G", format="E", array=MAG_G_)
+        col1 = fits.Column(name="MAGERR_G", format="E", array=MAGERR_G_)
+        col2 = fits.Column(name="MAG_R", format="E", array=MAG_R_)
+        col3 = fits.Column(name="MAGERR_R", format="E", array=MAGERR_R_)
 
         cols = fits.ColDefs([col0, col1, col2, col3])
         tbhdu = fits.BinTableHDU.from_columns(cols)
@@ -311,7 +337,8 @@ def select_ipix(nside, ra_min, ra_max, dec_min, dec_max, inclusive=False):
     hp_all = hp.query_strip(nside, theta1, theta2,
                             inclusive=inclusive, nest=False, buff=None)
     ra_c, dec_c = hp.pix2ang(nside, hp_all, nest=False, lonlat=True)
-    cond = (ra_c > ra_min) & (ra_c <= ra_max)
+    delta_ra = hp.nside2resol(nside, arcmin=True)
+    cond = (ra_c > ra_min - delta_ra/60) & (ra_c <= ra_max + delta_ra/60)
     hp_sel = hp_all[cond]
     hp_sel_nest = hp.ring2nest(nside, hp_sel)
     return hp_sel_nest
@@ -1643,103 +1670,106 @@ def write_sim_clus_features(param, hp_sample_un, mM):
 
     globals().update(param)
 
-    for i in hp_sample_un:
+    filepath = results_path + "/n_stars.dat"
+
+    os.system('rm ' + filepath)
+
+    for i, j in enumerate(hp_sample_un):
         hdu = fits.open(hpx_cats_clus_field + '/' +
-                        str(i) + '.fits', memmap=True)
+                        str(j) + '.fits', memmap=True)
         GC = hdu[1].data.field("GC")
         RA = hdu[1].data.field("ra")
         DEC = hdu[1].data.field("dec")
         MAG_G = hdu[1].data.field("mag_g_with_err")
         MAG_R = hdu[1].data.field("mag_r_with_err")
         # HPX64 = hdu[1].data.field("HPX64")
-        HPX64 = hp.ang2pix(64, RA, DEC, nest=True, lonlat=True)
+        HPX = hp.ang2pix(nside_ini, RA, DEC, nest=True, lonlat=True)
 
         hdu2 = fits.open(hpx_cats_clean_path + '/' +
-                         str(i) + '.fits', memmap=True)
+                         str(j) + '.fits', memmap=True)
         GC_clean = hdu2[1].data.field("GC")
         RA_clean = hdu2[1].data.field("ra")
         DEC_clean = hdu2[1].data.field("dec")
         MAG_G_clean = hdu2[1].data.field("mag_g_with_err")
         MAG_R_clean = hdu2[1].data.field("mag_r_with_err")
         # HPX64_clean = hdu2[1].data.field("HPX64")
-        HPX64_clean = hp.ang2pix(
-            64, RA_clean, DEC_clean, nest=True, lonlat=True)
-
-        filepath = results_path + "/n_stars.dat"
+        HPX_clean = hp.ang2pix(
+            nside_ini, RA_clean, DEC_clean, nest=True, lonlat=True)
 
         with open(filepath, "a") as out_file:
-            for j in range(len(hp_sample_un)):
-                # try:
-                cond = HPX64 == hp_sample_un[j]
-                RA__, DEC__, MAGG__, MAGR__ = RA[cond], DEC[cond], MAG_G[cond], MAG_R[cond]
-                cond_clean = HPX64_clean == hp_sample_un[j]
-                RA__clean, DEC__clean, MAGG__clean, MAGR__clean = RA_clean[cond_clean], DEC_clean[
-                    cond_clean], MAG_G_clean[cond_clean], MAG_R_clean[cond_clean]
+            # try:
+            cond = HPX == j
+            RA__, DEC__, MAGG__, MAGR__ = RA[cond], DEC[cond], MAG_G[cond], MAG_R[cond]
+            cond_clean = HPX_clean == j
+            RA__clean, DEC__clean, MAGG__clean, MAGR__clean = RA_clean[cond_clean], DEC_clean[
+                cond_clean], MAG_G_clean[cond_clean], MAG_R_clean[cond_clean]
 
-                # plt.scatter(RA__, DEC__)
-                # plt.show()
-                SNR = snr_estimate(
-                    RA__,
-                    DEC__,
-                    MAGG__,
-                    MAGG__ - MAGR__,
-                    hp_sample_un[j],
-                    nside_ini,
-                    mM[j],
-                    snr_inner_circle_arcmin / 60.,
-                    snr_rin_annulus_arcmin / 60.,
-                    snr_rout_annulus_arcmin / 60.,
-                    file_error,
-                    file_mask
-                )
-                SNR_clean = snr_estimate(
-                    RA__clean,
-                    DEC__clean,
-                    MAGG__clean,
-                    MAGG__clean - MAGR__clean,
-                    hp_sample_un[j],
-                    nside_ini,
-                    mM[j],
-                    snr_inner_circle_arcmin / 60.,
-                    snr_rin_annulus_arcmin / 60.,
-                    snr_rout_annulus_arcmin / 60.,
-                    file_error,
-                    file_mask
-                )
+            # plt.scatter(RA__, DEC__)
+            # plt.show()
+            SNR = snr_estimate(
+                RA__,
+                DEC__,
+                MAGG__,
+                MAGG__ - MAGR__,
+                hp_sample_un[i],
+                nside_ini,
+                mM[i],
+                snr_inner_circle_arcmin / 60.,
+                snr_rin_annulus_arcmin / 60.,
+                snr_rout_annulus_arcmin / 60.,
+                file_error,
+                file_mask
+            )
+            SNR_clean = snr_estimate(
+                RA__clean,
+                DEC__clean,
+                MAGG__clean,
+                MAGG__clean - MAGR__clean,
+                hp_sample_un[i],
+                nside_ini,
+                mM[i],
+                snr_inner_circle_arcmin / 60.,
+                snr_rin_annulus_arcmin / 60.,
+                snr_rout_annulus_arcmin / 60.,
+                file_error,
+                file_mask
+            )
 
-                cond_clus = (cond) & (GC == 1)
-                cond_clus_clean = (cond_clean) & (GC_clean == 1)
+            cond_clus = (cond) & (GC == 1)
+            cond_clus_clean = (cond_clean) & (GC_clean == 1)
 
-                MAGG_clus, MAGR_clus = (
-                    MAG_G[cond_clus],
-                    MAG_R[cond_clus],
-                )
-                flux_g = 10 ** (-0.4 * MAGG_clus)
-                flux_r = 10 ** (-0.4 * MAGR_clus)
-                M_abs_g = -2.5 * np.log10(np.sum(flux_g)) - mM[j]
-                M_abs_r = -2.5 * np.log10(np.sum(flux_r)) - mM[j]
-                M_abs_V = (
-                    M_abs_g - 0.58 * (M_abs_g - M_abs_r) - 0.01
-                )  # in V band following Jester 2005
+            MAGG_clus, MAGR_clus = (
+                MAG_G[cond_clus],
+                MAG_R[cond_clus],
+            )
+            flux_g = 10 ** (-0.4 * MAGG_clus)
+            flux_r = 10 ** (-0.4 * MAGR_clus)
+            M_abs_g = -2.5 * np.log10(np.sum(flux_g)) - mM[i]
+            M_abs_r = -2.5 * np.log10(np.sum(flux_r)) - mM[i]
+            M_abs_V = (
+                M_abs_g - 0.58 * (M_abs_g - M_abs_r) - 0.01
+            )  # in V band following Jester 2005
 
-                MAGG_clus_clean, MAGR_clus_clean = (
-                    MAG_G_clean[cond_clus_clean],
-                    MAG_R_clean[cond_clus_clean],
-                )
-                flux_g_clean = 10 ** (-0.4 * MAGG_clus_clean)
-                flux_r_clean = 10 ** (-0.4 * MAGR_clus_clean)
-                M_abs_g_clean = -2.5 * np.log10(np.sum(flux_g_clean)) - mM[j]
-                M_abs_r_clean = -2.5 * np.log10(np.sum(flux_r_clean)) - mM[j]
-                M_abs_V_clean = M_abs_g_clean - 0.58 * \
-                    (M_abs_g_clean - M_abs_r_clean) - 0.01
+            MAGG_clus_clean, MAGR_clus_clean = (
+                MAG_G_clean[cond_clus_clean],
+                MAG_R_clean[cond_clus_clean],
+            )
+            flux_g_clean = 10 ** (-0.4 * MAGG_clus_clean)
+            flux_r_clean = 10 ** (-0.4 * MAGR_clus_clean)
+            M_abs_g_clean = -2.5 * np.log10(np.sum(flux_g_clean)) - mM[i]
+            M_abs_r_clean = -2.5 * np.log10(np.sum(flux_r_clean)) - mM[i]
+            M_abs_V_clean = M_abs_g_clean - 0.58 * \
+                (M_abs_g_clean - M_abs_r_clean) - 0.01
 
-                print(
-                    "{:d} {:d} {:.2f} {:.2f} {:d} {:.2f} {:.2f}".format(
-                        hp_sample_un[j], len(RA[cond_clus]), M_abs_V, SNR,
+            if len(RA[cond_clus]) == 0:
+                print("{:d} {:d} {:.2f} {:.2f} {:d} {:.2f} {:.2f}".format(
+                        hp_sample_un[i], 0, 999, SNR,
+                        0, 999, SNR_clean), file=out_file)
+            else:
+                print("{:d} {:d} {:.2f} {:.2f} {:d} {:.2f} {:.2f}".format(
+                        hp_sample_un[i], len(RA[cond_clus]), M_abs_V, SNR,
                         len(RA_clean[cond_clus_clean]
-                            ), M_abs_V_clean, SNR_clean
-                    ), file=out_file,
-                )
+                            ), M_abs_V_clean, SNR_clean), file=out_file)
     out_file.close()
 
     return filepath

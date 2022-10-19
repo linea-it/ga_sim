@@ -68,7 +68,7 @@ mean_mass = (np.min(m_ini_iso[g_iso + mM_mean < param['mmax']]) +
 print('Mean mass (M_sun): {:.2f}'.format(mean_mass))
 
 # Making footprint
-hpx_ftp = make_footprint(param)
+make_footprint(param)
 
 # Calculating area sampled and defining mode
 area_sampled = estimation_area(param)
@@ -82,7 +82,6 @@ else:
 # correcting for extinction
 ipix_files = select_ipix(param['nside_infile'], param['ra_min'], param['ra_max'],
                          param['dec_min'], param['dec_max'], True)
-
 
 @python_app
 def filter_ipix_stars_app(ipix, param, ngp, sgp):
@@ -118,7 +117,6 @@ mag1_, err1_, err2_ = read_error(param['file_error'], 0.000, 0.000)
 # Simulating stellar clusters.
 print('Ready to simulate clusters.')
 
-
 @python_app
 def faker_app(N_stars_cmd, frac_bin, IMF_author, x0, y0, rexp, ell_, pa, dist, hpx, param, mag1_, err1_, err2_, output_path, mag_ref_comp,
               comp_mag_ref,
@@ -139,11 +137,9 @@ for i in range(len(hp_sample_un)):
               pa[i], dist[i], hp_sample_un[i], param, mag1_, err1_, err2_, fake_clus_path,
               param['mag_ref_comp'], param['comp_mag_ref'], param['comp_mag_max'])
 
-ipix_ini = select_ipix(param['nside_ini'], param['ra_min'], param['ra_max'],
-                       param['dec_min'], param['dec_max'], True)
+ipix_ini = glob.glob(param['hpx_cats_path'] + '/*.fits')
 
 results_join = []
-
 
 @python_app
 def join_sim_field_stars_app(ipix, param):
@@ -171,7 +167,6 @@ print('This is the most time consuming part: cleaning the stars from crowding.')
 
 results_from_clear = []
 
-
 @python_app
 def clean_input_cat_dist_app(i, param):
 
@@ -197,7 +192,7 @@ print('Almost done.')
 
 # Solve name of variable
 sim_clus_feat = write_sim_clus_features(param, hp_sample_un, mM)
-
+exit()
 clus_file_results(param['star_clusters_simulated'],
                   sim_clus_feat, param['results_path'] + '/objects.dat')
 
