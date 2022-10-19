@@ -192,7 +192,7 @@ print('Almost done.')
 
 # Solve name of variable
 sim_clus_feat = write_sim_clus_features(param, hp_sample_un, mM)
-exit()
+
 clus_file_results(param['star_clusters_simulated'],
                   sim_clus_feat, param['results_path'] + '/objects.dat')
 
