@@ -20,7 +20,7 @@ def get_config(key='local'):
         "htcondor": HighThroughputExecutor(
             label='htcondor',
             address=address_by_hostname(),
-            max_workers=50,
+            max_workers=40,
             provider=CondorProvider(
             init_blocks=8,
             min_blocks=8,

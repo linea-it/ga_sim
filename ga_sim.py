@@ -38,13 +38,13 @@ os.makedirs(param['hpx_cats_path'], exist_ok=True)
 os.makedirs(param['hpx_cats_clean_path'], exist_ok=True)
 os.makedirs(param['hpx_cats_filt_path'], exist_ok=True)
 
-hdu_ngp = fits.open(param['red_maps_path'] +
-                    "/SFD_dust_4096_ngp.fits", memmap=True)
-ngp = hdu_ngp[0].data
+# hdu_ngp = fits.open(param['red_maps_path'] +
+#                    "/SFD_dust_4096_ngp.fits", memmap=True)
+# ngp = hdu_ngp[0].data
 
-hdu_sgp = fits.open(param['red_maps_path'] +
-                    "/SFD_dust_4096_sgp.fits", memmap=True)
-sgp = hdu_sgp[0].data
+# hdu_sgp = fits.open(param['red_maps_path'] +
+#                    "/SFD_dust_4096_sgp.fits", memmap=True)
+# sgp = hdu_sgp[0].data
 
 # Downloading isochrone and printing some information
 
@@ -84,18 +84,18 @@ ipix_files = select_ipix(param['nside_infile'], param['ra_min'], param['ra_max']
                          param['dec_min'], param['dec_max'], True)
 
 @python_app
-def filter_ipix_stars_app(ipix, param, ngp, sgp):
+def filter_ipix_stars_app(ipix, param):
 
     from ga_sim import filter_ipix_stars
 
-    aaa = filter_ipix_stars(ipix, param, ngp, sgp)
+    aaa = filter_ipix_stars(ipix, param)
 
     return aaa
 
 res = []
 
 for i in ipix_files:
-    res.append(filter_ipix_stars_app(i, param, ngp, sgp))
+    res.append(filter_ipix_stars_app(i, param))
 
 outputs = [r.result() for r in res]
 

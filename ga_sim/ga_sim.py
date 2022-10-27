@@ -227,7 +227,7 @@ def resize_ipix_cats(ipix_files, param, mode, area_sampled):
         tbhdu.writeto(hpx_cats_path + '/' + str(j) + '.fits', overwrite=True)
 
 
-def filter_ipix_stars(i, param, ngp, sgp):
+def filter_ipix_stars(i, param):
     """Select stars in the requested area, correct for extinction and
     filter stars by magnitude and color ranges.
 
@@ -237,13 +237,15 @@ def filter_ipix_stars(i, param, ngp, sgp):
         Ipixel of simulation.
     param : dictionary
         Dictionary with all the input parameters.
-    ngp : map
-        Schlegel reddening map of Galactic Northern Hemisphere.
-    sgp : map
-        Schlegel reddening map of Galactic Southern Hemisphere.
     """
 
     globals().update(param)
+
+    hdu_ngp = fits.open(red_maps_path + "/SFD_dust_4096_ngp.fits", memmap=True)
+    ngp = hdu_ngp[0].data
+
+    hdu_sgp = fits.open(red_maps_path + "/SFD_dust_4096_sgp.fits", memmap=True)
+    sgp = hdu_sgp[0].data
 
     try:
         filepath = Path('{}/{}'.format(cat_infile_path,
