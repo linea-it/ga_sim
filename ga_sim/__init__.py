@@ -15,7 +15,7 @@ from ga_sim.ga_sim import (
     remove_close_stars,
     download_iso,
     filter_ipix_stars,
-    resize_ipix_cats,
+    sample_ipix_cat,
     gen_clus_file,
     read_error,
     clus_file_results,

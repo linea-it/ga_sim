@@ -7,7 +7,7 @@ from ga_sim import (
     clus_file_results,
     export_results,
     select_ipix,
-    resize_ipix_cats,
+    sample_ipix_cat,
     estimation_area
 )
 
@@ -20,6 +20,7 @@ import parsl
 from parsl.app.app import python_app
 import condor
 import sys
+import healpy as hp
 
 # Loading config and files, creating folders
 parsl.clear()
@@ -31,6 +32,12 @@ confg = "ga_sim.json"
 with open(confg) as fstream:
     param = json.load(fstream)
 
+try:
+    os.system('rm -r results/hpx*')
+    os.system('rm -r results/ftp/*.fits')
+except:
+    print('No data to clean.')
+
 os.makedirs(param['results_path'], exist_ok=True)
 os.makedirs(param['ftp_path'], exist_ok=True)
 os.makedirs(param['hpx_cats_clus_field'], exist_ok=True)
@@ -38,19 +45,9 @@ os.makedirs(param['hpx_cats_path'], exist_ok=True)
 os.makedirs(param['hpx_cats_clean_path'], exist_ok=True)
 os.makedirs(param['hpx_cats_filt_path'], exist_ok=True)
 
-# hdu_ngp = fits.open(param['red_maps_path'] +
-#                    "/SFD_dust_4096_ngp.fits", memmap=True)
-# ngp = hdu_ngp[0].data
-
-# hdu_sgp = fits.open(param['red_maps_path'] +
-#                    "/SFD_dust_4096_sgp.fits", memmap=True)
-# sgp = hdu_sgp[0].data
-
 # Downloading isochrone and printing some information
-
 download_iso(param['padova_version_code'], param['survey'], 0.0152 * (10 ** param['MH_simulation']),
              param['age_simulation'], param['av_simulation'], param['file_iso'], 5)
-
 
 iso_info = np.loadtxt(param['file_iso'], usecols=(1, 2, 3, 26), unpack=True)
 FeH_iso = iso_info[0][0]
@@ -73,7 +70,7 @@ make_footprint(param)
 # Calculating area sampled and defining mode
 area_sampled = estimation_area(param)
 
-if (param['survey'] == 'lsst') and (area_sampled < 300.):
+if (param['survey'] == 'lsst') and (area_sampled > 300.):
     mode = 'expand'
 else:
     mode = 'cutout'
@@ -103,7 +100,33 @@ print('Total of {:d} pixels read and filtered.'.format(
     int(np.sum(outputs))))
 
 # Expanding catalog depending on the case
-resize_ipix_cats(ipix_files, param, mode, area_sampled)
+print('Area sampled: {:.2f} square degrees'.format(area_sampled))
+
+files_ftp = glob.glob(param['ftp_path'] + '/*.fits')
+files_DP0_ftp = glob.glob(param['ftp_infile_path'] + '/' + str(int(param['nside_infile'])) + '/*.fits')
+
+good_DP0_ftp = []
+
+for ii in files_DP0_ftp:
+    data = fits.getdata(ii)
+    signal = data['SIGNAL']
+    cov_fact_ipix = np.sum(signal) * hp.nside2pixarea(param['nside_ftp'], degrees=True) / hp.nside2pixarea(param['nside_infile'], degrees=True)
+    if cov_fact_ipix > param['cov_factor']:
+        good_DP0_ftp.extend([ii])
+
+ipix_ftp = [i.split('/')[-1] for i in files_ftp]
+
+@python_app
+def sample_ipix_cat_app(i, good_DP0_ftp, param, mode):
+    from ga_sim import sample_ipix_cat
+    aaa = sample_ipix_cat(i, good_DP0_ftp, param, mode)
+
+res2 = []
+
+for i in files_ftp:
+    res2.append(sample_ipix_cat_app(i, good_DP0_ftp, param, mode))
+
+outputs = [r.result() for r in res2]
 
 # Generating features of simulated clusters
 print('Now generating cluster file.')
@@ -163,22 +186,23 @@ print('Total of {:d} pixels were joint from clusters and fields.'.format(
 
 ipix_cats = glob.glob(param['hpx_cats_clus_field'] + '/*.fits')
 
+print('== LEN IPIX CATS == ', len(ipix_cats))
 print('This is the most time consuming part: cleaning the stars from crowding.')
 
 results_from_clear = []
 
 @python_app
-def clean_input_cat_dist_app(i, param):
+def clean_input_cat_dist_app(iiii, param):
 
     from ga_sim import clean_input_cat_dist
 
-    aaaa = clean_input_cat_dist(param['hpx_cats_clean_path'], i, param['ra_str'],
-                                param['dec_str'], param['min_dist_arcsec'], 0.01)
+    aaaa = clean_input_cat_dist(param['hpx_cats_clean_path'], iiii, param['ra_str'],
+                                param['dec_str'], param['min_dist_arcsec'], 0.01, iiii + '.log')
     return aaaa
 
 
-for i in ipix_cats:
-    results_from_clear.append(clean_input_cat_dist_app(i, param))
+for aa in ipix_cats:
+    results_from_clear.append(clean_input_cat_dist_app(aa, param))
 
 outputs = [r.result() for r in results_from_clear]
 

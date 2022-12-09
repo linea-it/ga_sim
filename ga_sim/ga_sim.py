@@ -13,6 +13,7 @@ from astropy.coordinates import SkyCoord, match_coordinates_sky
 from astropy.io.fits import getdata
 from pathlib import Path
 from itertools import compress
+import logging
 
 
 def get_hpx_ftp_data(param):
@@ -132,7 +133,7 @@ def join_sim_field_stars(i, param):
     return 1
 
 
-def resize_ipix_cats(ipix_files, param, mode, area_sampled):
+def sample_ipix_cat(ipix_ftp, good_DP0_ftp, param, mode):
     """Resizes the simulation (field stars) in order to populate regions that are not
     filled with field stars.
 
@@ -151,42 +152,37 @@ def resize_ipix_cats(ipix_files, param, mode, area_sampled):
 
     globals().update(param)
 
-    MAG_G_, MAG_R_, MAGERR_G_, MAGERR_R_ = [], [], [], []
+    # DP0 ftp data:
+    ipix_DP0_ftp = np.random.choice(good_DP0_ftp, size=1)[0]
+    DP0_ftp_data = getdata(ipix_DP0_ftp)
+    area_ipix_DP0_ftp = hp.nside2pixarea(nside_ftp, degrees=True) * np.sum(DP0_ftp_data['SIGNAL'])
 
-    for i in ipix_files:
-        try:
-            filepath = Path(hpx_cats_filt_path, "%s.fits" % i)
-            data = getdata(filepath)
-            MAG_G = data['MAG_G']
-            MAGERR_G = data['MAGERR_G']
-            MAG_R = data['MAG_R']
-            MAGERR_R = data['MAGERR_R']
+    # ftp data
+    ftp_data = getdata(ipix_ftp)
+    area_ipix_ftp = hp.nside2pixarea(nside_ftp, degrees=True) * np.sum(ftp_data['SIGNAL'])
 
-            MAG_G_.extend(MAG_G)
-            MAG_R_.extend(MAG_R)
-            MAGERR_G_.extend(MAGERR_G)
-            MAGERR_R_.extend(MAGERR_R)
-        except:
-            print('Missing tile: {:d}'.format(i))
+    ipix_DP0_cat = hpx_cats_filt_path + '/' + ipix_DP0_ftp.split('/')[-1]
+    DP0_cat_data = getdata(ipix_DP0_cat)
+    mag_DP0 = DP0_cat_data['MAG_G']
+    
+    n_stars_sampled = int(len(mag_DP0) * area_ipix_ftp / area_ipix_DP0_ftp)
 
-    hpx_ftp_data = get_hpx_ftp_data(param)
+    MAG_G = DP0_cat_data['MAG_G']
+    MAGERR_G = DP0_cat_data['MAGERR_G']
+    MAG_R = DP0_cat_data['MAG_R']
+    MAGERR_R = DP0_cat_data['MAGERR_R']
 
-    if mode == 'cutout':
-        RA, DEC = d_star_real_cat(
-            hpx_ftp_data, len(MAG_G_), nside3, nside_ftp)
-        MAG_G = MAG_G_
-        MAGERR_G = MAGERR_G_
-        MAG_R = MAG_R_
-        MAGERR_R = MAGERR_R_
-    else:
-        total_els = int(area_sampled * len(MAG_G_) / 300)
-        RA, DEC = d_star_real_cat(
-            hpx_ftp_data, total_els, nside3, nside_ftp)
-        idx_random = np.random.randint(len(MAG_G_), size=total_els)
-        MAG_G = [MAG_G_[i] for i in idx_random]
-        MAG_R = [MAG_R_[i] for i in idx_random]
-        MAGERR_G = [MAGERR_G_[i] for i in idx_random]
-        MAGERR_R = [MAGERR_R_[i] for i in idx_random]
+    MAG_G_ = np.random.choice(MAG_G, size=n_stars_sampled)
+    MAG_R_ = np.random.choice(MAG_R, size=n_stars_sampled)
+    MAGERR_G_ = np.random.choice(MAGERR_G, size=n_stars_sampled)
+    MAGERR_R_ = np.random.choice(MAGERR_R, size=n_stars_sampled)
+
+    RA, DEC = d_star_real_cat(
+        ftp_data['HP_PIXEL_NEST_4096'], n_stars_sampled, nside3, nside_ftp)
+    MAG_G = MAG_G_
+    MAGERR_G = MAGERR_G_
+    MAG_R = MAG_R_
+    MAGERR_R = MAGERR_R_
 
     cond2 = (RA > ra_min) & (RA < ra_max) & (DEC > dec_min) & (DEC < dec_max)
 
@@ -199,32 +195,24 @@ def resize_ipix_cats(ipix_files, param, mode, area_sampled):
 
     HPX = hp.ang2pix(nside_ini, RA_, DEC_, nest=True, lonlat=True)
 
-    idx_sort = np.argsort(HPX)
+    col0 = fits.Column(name="ra", format="D",
+                       array=RA_)
+    col1 = fits.Column(name="dec", format="D",
+                       array=DEC_)
+    col2 = fits.Column(name="mag_g_with_err", format="E",
+                       array=MAG_G_)
+    col3 = fits.Column(name="mag_r_with_err", format="E",
+                       array=MAG_R_)
+    col4 = fits.Column(name="magerr_g", format="E",
+                       array=MAGERR_G_)
+    col5 = fits.Column(name="magerr_r", format="E",
+                       array=MAGERR_R_)
+    # col7 = fits.Column(name="HPX64", format="K", array=HPX64)
+    cols = fits.ColDefs([col0, col1, col2, col3, col4, col5])
+    tbhdu = fits.BinTableHDU.from_columns(cols)
+    tbhdu.writeto(hpx_cats_path + '/' + ipix_ftp.split('/')[-1], overwrite=True)
 
-    HPX_sort = [HPX[i] for i in idx_sort]
-    RA_sort = [RA_[i] for i in idx_sort]
-    DEC_sort = [DEC_[i] for i in idx_sort]
-
-    HPX_un = np.unique(HPX_sort)
-
-    for j in HPX_un:
-        cond = (HPX_sort == j)
-        col0 = fits.Column(name="ra", format="D",
-                           array=list(compress(RA_sort, cond)))
-        col1 = fits.Column(name="dec", format="D",
-                           array=list(compress(DEC_sort, cond)))
-        col2 = fits.Column(name="mag_g_with_err", format="E",
-                           array=list(compress(MAG_G_, cond)))
-        col3 = fits.Column(name="mag_r_with_err", format="E",
-                           array=list(compress(MAG_R_, cond)))
-        col4 = fits.Column(name="magerr_g", format="E",
-                           array=list(compress(MAGERR_G_, cond)))
-        col5 = fits.Column(name="magerr_r", format="E",
-                           array=list(compress(MAGERR_R_, cond)))
-        # col7 = fits.Column(name="HPX64", format="K", array=HPX64)
-        cols = fits.ColDefs([col0, col1, col2, col3, col4, col5])
-        tbhdu = fits.BinTableHDU.from_columns(cols)
-        tbhdu.writeto(hpx_cats_path + '/' + str(j) + '.fits', overwrite=True)
+    return 1
 
 
 def filter_ipix_stars(i, param):
@@ -264,8 +252,9 @@ def filter_ipix_stars(i, param):
         MAG_R = np.nan_to_num(MAG_R, copy=True, nan=-99)
         MAGERR_R = np.nan_to_num(MAGERR_R, copy=True, nan=-99)
 
-        cond2 = (RA > ra_min) & (RA < ra_max) & (
-            DEC > dec_min) & (DEC < dec_max) & (EXT == 0)
+        # cond2 = (RA > ra_min) & (RA < ra_max) & (
+        #     DEC > dec_min) & (DEC < dec_max) & (EXT == 0)
+        cond2 = (EXT == 0)
 
         RA = RA[cond2]
         DEC = DEC[cond2]
@@ -363,7 +352,6 @@ def export_results(proc_dir, res_path, copy_path):
     dir_list = sorted(glob.glob(proc_dir + '/*'))
     new_dir = proc_dir + \
         "/{0:05d}".format(int(dir_list[-1].split('/')[-1]) + 1)
-    print(new_dir)
     os.system('mkdir -p ' + new_dir)
     os.system('mkdir -p ' + new_dir + '/detections')
     os.system('mkdir -p ' + new_dir + '/simulations')
@@ -427,7 +415,7 @@ def king_prof(N_stars, rc, rt):
     return np.multiply(rad_star, rt)
 
 
-def clean_input_cat_dist(dir_name, file_name, ra_str, dec_str, max_dist_arcsec, init_dist):
+def clean_input_cat_dist(dir_name, file_name, ra_str, dec_str, max_dist_arcsec, init_dist, logger=None):
     """ This function removes stars closer than max_dist_arcsec. That is specially significant to
     stellar clusters, where the stellar crowding in images creates a single
     object in cluster's center, but many star in the periphery.
@@ -450,6 +438,19 @@ def clean_input_cat_dist(dir_name, file_name, ra_str, dec_str, max_dist_arcsec, 
     """
 
     output_file = dir_name + '/' + file_name.split('/')[-1]
+
+    if logger:
+        handler = logging.FileHandler(logger)
+        logger = logging.getLogger(file_name.split('/')[-1])
+        formatter = logging.Formatter(
+            "%(asctime)s %(name)-12s %(levelname)-8s %(message)s"
+        )
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    else:
+        logger = logging.getLogger(file_name.split('/')[-1])
+
+    logger.info(output_file)
 
     data = getdata(file_name)
     t = Table.read(file_name)
@@ -477,16 +478,21 @@ def clean_input_cat_dist(dir_name, file_name, ra_str, dec_str, max_dist_arcsec, 
         else:
             clean_idx.append(i)
 
-    data_clean = np.array([data[:][i] for i in clean_idx])
+    try:   
+        data_clean = np.array([data[:][ii] for ii in clean_idx])
+        # print('== DC == ', data_clean, clean_idx[0], clean_idx[-1], np.shape(data_clean))
+        col = [iii for iii in range(len(label_columns))]
 
-    col = [i for i in range(len(label_columns))]
-
-    for i, j in enumerate(label_columns):
-        col[i] = fits.Column(
-            name=label_columns[i], format=t_format[i], array=data_clean[:, i])
-    cols = fits.ColDefs([col[i] for i in range(len(label_columns))])
-    tbhdu = fits.BinTableHDU.from_columns(cols)
-    tbhdu.writeto(output_file, overwrite=True)
+        for i, j in enumerate(label_columns):
+            col[i] = fits.Column(
+                name=label_columns[i],
+                format=t_format[i],
+                array=data_clean[:, i])
+        cols = fits.ColDefs([col[i] for i in range(len(label_columns))])
+        tbhdu = fits.BinTableHDU.from_columns(cols)
+        tbhdu.writeto(output_file, overwrite=True)
+    except:
+        print('Some problema with pixel {} or this pixel is empty'.format(file_name.split('/')[-1]))
 
     return 1
 
