@@ -172,10 +172,11 @@ def sample_ipix_cat(ipix_ftp, good_DP0_ftp, param, mode):
     MAG_R = DP0_cat_data['MAG_R']
     MAGERR_R = DP0_cat_data['MAGERR_R']
 
-    MAG_G_ = np.random.choice(MAG_G, size=n_stars_sampled)
-    MAG_R_ = np.random.choice(MAG_R, size=n_stars_sampled)
-    MAGERR_G_ = np.random.choice(MAGERR_G, size=n_stars_sampled)
-    MAGERR_R_ = np.random.choice(MAGERR_R, size=n_stars_sampled)
+    idx = np.random.choice(np.arange(MAG_G), size=n_stars_sampled)
+    MAG_G_ = [MAG_G[ii] for ii in idx]
+    MAG_R_ = [MAG_R[ii] for ii in idx]
+    MAGERR_G_ = [MAGERR_G[ii] for ii in idx]
+    MAGERR_R_ = [MAGERR_R[ii] for ii in idx]
 
     RA, DEC = d_star_real_cat(
         ftp_data['HP_PIXEL_NEST_4096'], n_stars_sampled, nside3, nside_ftp)

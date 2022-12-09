@@ -200,7 +200,6 @@ def clean_input_cat_dist_app(iiii, param):
                                 param['dec_str'], param['min_dist_arcsec'], 0.01, iiii + '.log')
     return aaaa
 
-
 for aa in ipix_cats:
     results_from_clear.append(clean_input_cat_dist_app(aa, param))
 
