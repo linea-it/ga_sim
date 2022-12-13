@@ -172,7 +172,7 @@ def sample_ipix_cat(ipix_ftp, good_DP0_ftp, param, mode):
     MAG_R = DP0_cat_data['MAG_R']
     MAGERR_R = DP0_cat_data['MAGERR_R']
 
-    idx = np.random.choice(np.arange(MAG_G), size=n_stars_sampled)
+    idx = np.random.choice(np.arange(len(MAG_G)), size=n_stars_sampled)
     MAG_G_ = [MAG_G[ii] for ii in idx]
     MAG_R_ = [MAG_R[ii] for ii in idx]
     MAGERR_G_ = [MAGERR_G[ii] for ii in idx]
