@@ -468,8 +468,7 @@ def clean_input_cat_dist(dir_name, file_name, ra_str, dec_str, max_dist_arcsec, 
     for i, j in enumerate(RA):
         length_dec = init_dist
         length_ra = init_dist / np.cos(np.deg2rad(DEC[i]))
-        cond = (RA < j + length_ra) & (RA > j - length_ra) & (DEC <
-                                                              DEC[i] + length_dec) & (DEC > DEC[i] - length_dec)
+        cond = (RA < j + length_ra) & (RA > j - length_ra) & (DEC < DEC[i] + length_dec) & (DEC > DEC[i] - length_dec)
         RA_ = RA[cond]
         DEC_ = DEC[cond]
         dist = dist_ang(RA_, DEC_, j, DEC[i])
@@ -494,6 +493,8 @@ def clean_input_cat_dist(dir_name, file_name, ra_str, dec_str, max_dist_arcsec, 
         tbhdu.writeto(output_file, overwrite=True)
     except:
         print('Some problema with pixel {} or this pixel is empty'.format(file_name.split('/')[-1]))
+
+    return 1
 
     return 1
 
@@ -1519,7 +1520,6 @@ def join_cat(ra_min, ra_max, dec_min, dec_max, hp_sample_un, survey,
     GC = np.zeros(len(RA), dtype=int)
 
     for j in range(len(hp_sample_un)):
-        # try:
         # input_path = Diretório onde se encontram os arquivos _clus.
         filepath = Path(input_path, "%s_clus.dat" % hp_sample_un[j])
         print('FILEPATH == ', filepath)
@@ -1709,6 +1709,7 @@ def write_sim_clus_features(param, hp_sample_un, mM):
             # try:
             cond = HPX == j
             RA__, DEC__, MAGG__, MAGR__ = RA[cond], DEC[cond], MAG_G[cond], MAG_R[cond]
+
             cond_clean = HPX_clean == j
             RA__clean, DEC__clean, MAGG__clean, MAGR__clean = RA_clean[cond_clean], DEC_clean[
                 cond_clean], MAG_G_clean[cond_clean], MAG_R_clean[cond_clean]
@@ -1906,4 +1907,3 @@ def remove_close_stars(input_cat, output_cat, nside_ini, PSF_factor, PSF_size):
     tbhdu.writeto(output_cat, overwrite=True)
 
     return output_cat
-

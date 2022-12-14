@@ -151,11 +151,11 @@ def faker_app(N_stars_cmd, frac_bin, IMF_author, x0, y0, rexp, ell_, pa, dist, h
           param['mmin'], param['mmax'], mag1_, err1_, err2_, param['file_iso'], output_path, mag_ref_comp,
           comp_mag_ref, comp_mag_max)
 
-
 fake_clus_path = param['results_path'] + '/fake_clus'
 
 for i in range(len(hp_sample_un)):
     N_stars_cmd = int(mass[i] / mean_mass)
+
     faker_app(N_stars_cmd, param['frac_bin'], param['IMF_author'], RA_pix[i], DEC_pix[i], r_exp[i], ell[i],
               pa[i], dist[i], hp_sample_un[i], param, mag1_, err1_, err2_, fake_clus_path,
               param['mag_ref_comp'], param['comp_mag_ref'], param['comp_mag_max'])
@@ -223,4 +223,3 @@ os.system('jupyter nbconvert --execute --to html --EmbedImagesPreprocessor.embed
 
 export_results(param['export_path'], param['results_path'],
                param['copy_html_path'])
-
