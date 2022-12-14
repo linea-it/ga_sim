@@ -133,21 +133,18 @@ def join_sim_field_stars(i, param):
     return 1
 
 
-def sample_ipix_cat(ipix_ftp, good_DP0_ftp, param, mode):
+def sample_ipix_cat(ipix_ftp, good_DP0_ftp, param):
     """Resizes the simulation (field stars) in order to populate regions that are not
     filled with field stars.
 
     Parameters
     ----------
-    ipix_files : list
-        Ipix available in simulation of field stars.
+    ipix_ftp : int
+        Single ipix in simulation of field stars.
+    good_DP0_ftp : list
+        List of pixels with coverage larger than minimum set by user.
     param : dictionary
         Dictionary with all the input parameters.
-    mode : string
-        cutout (data available is larger than requested simulation)
-        or expand (requested simulation is larger than available).
-    area_sampled : float
-        Area in square degrees to be sampled.
     """
 
     globals().update(param)

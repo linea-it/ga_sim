@@ -34,7 +34,7 @@ with open(confg) as fstream:
 
 try:
     os.system('rm -r results/hpx*')
-    os.system('rm -r results/ftp/*.fits')
+    os.system('rm results/ftp/*.fits')
 except:
     print('No data to clean.')
 
@@ -67,13 +67,7 @@ print('Mean mass (M_sun): {:.2f}'.format(mean_mass))
 # Making footprint
 make_footprint(param)
 
-# Calculating area sampled and defining mode
 area_sampled = estimation_area(param)
-
-if (param['survey'] == 'lsst') and (area_sampled > 300.):
-    mode = 'expand'
-else:
-    mode = 'cutout'
 
 # Selecting input files and filtering by magnitude and color ranges and
 # correcting for extinction
@@ -117,14 +111,14 @@ for ii in files_DP0_ftp:
 ipix_ftp = [i.split('/')[-1] for i in files_ftp]
 
 @python_app
-def sample_ipix_cat_app(i, good_DP0_ftp, param, mode):
+def sample_ipix_cat_app(i, good_DP0_ftp, param):
     from ga_sim import sample_ipix_cat
-    aaa = sample_ipix_cat(i, good_DP0_ftp, param, mode)
+    aaa = sample_ipix_cat(i, good_DP0_ftp, param)
 
 res2 = []
 
 for i in files_ftp:
-    res2.append(sample_ipix_cat_app(i, good_DP0_ftp, param, mode))
+    res2.append(sample_ipix_cat_app(i, good_DP0_ftp, param))
 
 outputs = [r.result() for r in res2]
 
