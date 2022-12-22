@@ -1651,7 +1651,7 @@ def snr_estimate(RA__, DEC__, G__, GR__, PIX_sim, nside1,
         / area_annulus
     )
 
-    return len(r_star[r_star < inner_circle]) / np.sqrt(N_bg_equal_area)
+    return (len(r_star[r_star < inner_circle]) - N_bg_equal_area) / np.sqrt(N_bg_equal_area)
 
 
 def write_sim_clus_features(param, hp_sample_un, mM):
