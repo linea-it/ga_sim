@@ -20,13 +20,13 @@ def get_config(key='local'):
         "htcondor": HighThroughputExecutor(
             label='htcondor',
             address=address_by_hostname(),
-            max_workers=30,
+            max_workers=40,
             provider=CondorProvider(
-            init_blocks=3,
-            min_blocks=3,
-            max_blocks=3,
+            init_blocks=8,
+            min_blocks=8,
+            max_blocks=8,
             # parallelism=0.5,
-            requirements='''((Machine == "apl05.ib0.cm.linea.gov.br")||(Machine == "apl06.ib0.cm.linea.gov.br")||(Machine == "apl07.ib0.cm.linea.gov.br")||(Machine == "apl08.ib0.cm.linea.gov.br")||(Machine == "apl09.ib0.cm.linea.gov.br")||(Machine == "apl10.ib0.cm.linea.gov.br")||(Machine == "apl11.ib0.cm.linea.gov.br")||(Machine == "apl12.ib0.cm.linea.gov.br")||(Machine == "apl13.ib0.cm.linea.gov.br")||(Machine == "apl14.ib0.cm.linea.gov.br")||(Machine == "apl15.ib0.cm.linea.gov.br")||(Machine == "apl15.ib0.cm.linea.gov.br"))''',
+            requirements='''((Machine == "apl05.ib0.cm.linea.gov.br")||(Machine == "apl06.ib0.cm.linea.gov.br")||(Machine == "apl08.ib0.cm.linea.gov.br")||(Machine == "apl09.ib0.cm.linea.gov.br")||(Machine == "apl12.ib0.cm.linea.gov.br")||(Machine == "apl13.ib0.cm.linea.gov.br")||(Machine == "apl14.ib0.cm.linea.gov.br")||(Machine == "apl16.ib0.cm.linea.gov.br"))''',
             scheduler_options='+RequiresWholeMachine = True',
             worker_init=f"source {ga_sim_root_dir}/env.sh",
             cmd_timeout=120,

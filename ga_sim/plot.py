@@ -9,6 +9,37 @@ from pathlib import Path
 from ga_sim.ga_sim import radec2GCdist
 mpl.rcParams["legend.numpoints"] = 1
 from matplotlib.colors import LogNorm
+import glob
+
+def read_final_cat(param):
+
+    globals().update(param)
+
+    ipix_files = glob.glob(hpx_cats_clean_path + '/*.fits')
+
+    RA_, DEC_, MAG_G_, MAGERR_G_, MAG_R_, MAGERR_R_, GC_ = [], [], [], [], [], [], []
+
+    for i in ipix_files:
+        filepath = Path(hpx_cats_clean_path, "%s" % i)
+        data = getdata(filepath)
+        RA = data['ra']
+        DEC = data['dec']
+        MAG_G = data['mag_g_with_err']
+        MAGERR_G = data['magerr_g']
+        MAG_R = data['mag_r_with_err']
+        MAGERR_R = data['magerr_r']
+        GC = data['GC']
+
+        RA_.append(RA)
+        DEC_.append(DEC)
+        MAG_G_.append(MAG_G)
+        MAG_R_.append(MAG_R)
+        MAGERR_G_.append(MAGERR_G)
+        MAGERR_R_.append(MAGERR_R)
+        GC_.append(GC)
+
+    return RA_, DEC_, MAG_G_, MAGERR_G_, MAG_R_, MAGERR_R_, GC_
+
 
 def plot_cmd_clean(ipix_clean_cats, mmin, mmax, cmin, cmax, magg_str, magr_str, GC_str, output_dir):
 
@@ -302,7 +333,7 @@ def general_plots(star_clusters_simulated, output_dir):
 
 
 def plot_ftp(
-    ftp_fits, star_clusters_simulated, mockcat, ra_max, ra_min, dec_min, dec_max,
+    pix_ftp, star_clusters_simulated, ra_max, ra_min, dec_min, dec_max,
     output_dir
 ):
     """Plot footprint map to check area."""
@@ -310,11 +341,6 @@ def plot_ftp(
     npix = hp.nside2npix(nside)
     
     cmap = plt.cm.inferno_r
-
-    # data = getdata("ftp_4096_nest.fits")
-    data = getdata(ftp_fits)
-
-    pix_ftp = data["HP_PIXEL_NEST_4096"]
 
     ra_pix_ftp, dec_pix_ftp = hp.pix2ang(nside, pix_ftp, nest=True, lonlat=True)
     map_ftp = np.zeros(hp.nside2npix(nside))
@@ -557,33 +583,17 @@ def plots_ang_size(
     plt.show()
 
 
-def plot_err(
-    mockcat=Path("results/des_mockcat_for_detection.fits"), output_plots=Path("results")
-):
+def plot_err(MAG_G, MAG_R, MAGERR_G, MAGERR_R, GC):
 
     """Plot the magnitude and error of the simulated clusters compared to the
     real stars, in log scale.
 
     """
-    # TODO: Path de arquivo hardcoded, verificar se pode ser parametro ou um path fixo
-    mockcat = Path(mockcat)
 
-    hdu = fits.open(mockcat, memmap=True)
-    GC = hdu[1].data.field("GC")
-
-    # TODO: Variaveis instanciadas mas não utilizadas
-    ra = hdu[1].data.field("ra")
-    dec = hdu[1].data.field("dec")
-    mag_g_with_err = hdu[1].data.field("mag_g_with_err")
-    mag_r_with_err = hdu[1].data.field("mag_r_with_err")
-    magerr_g = hdu[1].data.field("magerr_g")
-    magerr_r = hdu[1].data.field("magerr_r")
-    hdu.close()
-
-    plt.scatter(mag_g_with_err[GC == 0], magerr_g[GC == 0], label="Field stars", c="k")
+    plt.scatter(MAG_G[GC == 0], MAGERR_G[GC == 0], label="Field stars", c="k")
     plt.scatter(
-        mag_g_with_err[GC == 1],
-        magerr_g[GC == 1],
+        MAG_G[GC == 1],
+        MAGERR_G[GC == 1],
         label="Simulated stars",
         c="r",
         zorder=10,

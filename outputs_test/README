@@ -1,0 +1,14 @@
+This is the folder with the results from a simulation to test if the code runs normally.
+
+Steps to follow:
+1) Copy ga_sim.json from this folder to a level above (where the code will run);
+2) Make changes in ga_sim.json file, fixing paths, etc.
+3) Run code (something like 'python ga_sim.py').
+
+The results should be similar to those in hpx_cats_clean in this folder. See that the random numerical realization of the clusters is different from that in this folder, but the limits are the same as in this folder, along with the number of pixels.
+
+
+Any improvement, question or suggestion, write to adriano.pieres@gmail.com
+
+December, 2022
+Adriano Pieres
