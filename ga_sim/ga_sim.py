@@ -333,7 +333,7 @@ def select_ipix(nside, ra_min, ra_max, dec_min, dec_max, inclusive=False):
     return hp_sel_nest
 
 
-def export_results(proc_dir, res_path, copy_path):
+def export_results(proc_dir, res_path):
     """This function exports the results of the run to a directory called proc_dir,
     creating a subfolder with number following the last process in that folder.
 
@@ -367,13 +367,13 @@ def export_results(proc_dir, res_path, copy_path):
     files2 = glob.glob('*.*')
     for i in files2:
         os.system('cp ' + i + ' ' + new_dir + '/simulations/')
-    new_dir2 = copy_path + \
-        "/{0:05d}".format(int(dir_list[-1].split('/')[-1]) + 1)
-    os.system('mkdir -p ' + new_dir2)
-    os.system('mkdir -p ' + new_dir2 + '/simulations')
-    html_file = glob.glob('*.html')
-    os.system('cp ' + html_file[0] + ' ' +
-              new_dir2 + '/simulations/index.html')
+    # new_dir2 = copy_path + \
+    #     "/{0:05d}".format(int(dir_list[-1].split('/')[-1]) + 1)
+    # os.system('mkdir -p ' + new_dir2)
+    # os.system('mkdir -p ' + new_dir2 + '/simulations')
+    # html_file = glob.glob('*.html')
+    # os.system('cp ' + html_file[0] + ' ' +
+    #           new_dir2 + '/simulations/index.html')
 
 
 def king_prof(N_stars, rc, rt):

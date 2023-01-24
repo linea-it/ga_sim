@@ -213,7 +213,6 @@ sim_clus_feat = write_sim_clus_features(param, hp_sample_un, mM)
 clus_file_results(param['star_clusters_simulated'],
                   sim_clus_feat, param['results_path'] + '/objects.dat')
 
-os.system('jupyter nbconvert --execute --to html --EmbedImagesPreprocessor.embed_images=True plots_sim.ipynb')
+# os.system('jupyter nbconvert --execute --to html --EmbedImagesPreprocessor.embed_images=True plots_sim.ipynb')
 
-export_results(param['export_path'], param['results_path'],
-               param['copy_html_path'])
+export_results(param['export_path'], param['results_path']) # param['copy_html_path'])
