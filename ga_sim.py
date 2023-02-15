@@ -21,7 +21,11 @@ from parsl.app.app import python_app
 import condor
 import sys
 import healpy as hp
+import cProfile, pstats
 
+
+profiler = cProfile.Profile()
+profiler.enable()
 # Loading config and files, creating folders
 parsl.clear()
 parsl.load(condor.get_config('htcondor'))
@@ -50,10 +54,7 @@ download_iso(param['padova_version_code'], param['survey'], 0.0152 * (10 ** para
              param['age_simulation'], param['av_simulation'], param['file_iso'], 5)
 
 iso_info = np.loadtxt(param['file_iso'], usecols=(1, 2, 3, 26), unpack=True)
-FeH_iso = iso_info[0][0]
-logAge_iso = iso_info[1][0]
-m_ini_iso = iso_info[2]
-g_iso = iso_info[3]
+FeH_iso, logAge_iso, m_ini_iso, g_iso = iso_info[0][0], iso_info[1][0], iso_info[2], iso_info[3]
 
 print('[Fe/H]={:.2f}, Age={:.2f} Gyr'.format(FeH_iso, 10**(logAge_iso-9)))
 
@@ -214,5 +215,9 @@ clus_file_results(param['star_clusters_simulated'],
                   sim_clus_feat, param['results_path'] + '/objects.dat')
 
 # os.system('jupyter nbconvert --execute --to html --EmbedImagesPreprocessor.embed_images=True plots_sim.ipynb')
+profiler.disable()
+# stats = pstats.Stats(profiler).sort_stats('tottime')
+stats = pstats.Stats(profiler)
+stats.dump_stats(param['results_path'] + '/cProfile_data.txt')
 
 export_results(param['export_path'], param['results_path']) # param['copy_html_path'])
