@@ -716,7 +716,7 @@ def read_error(infile, to_add_mag1, to_add_mag2):
         List of magnitudes and errors in band 1 and 2.
     """
 
-    mag1_, err1_, err2_ = np.loadtxt(infile, usecols=(0, 1, 2), unpack=True)
+    mag1_, err1_, err2_ = np.loadtxt(infile, usecols=(0, 2, 3), unpack=True)
     err1_ += to_add_mag1
     err2_ += to_add_mag2
     return mag1_, err1_, err2_
@@ -1134,7 +1134,7 @@ def apply_err(mag, mag_table, err_table):
     """
 
     err_interp = np.interp(mag, mag_table, err_table)
-    return np.abs(2. * err_interp * np.random.randn(len(err_interp)))
+    return np.add(err_interp, np.multiply(0.02, np.random.randn(len(err_interp))))
 
 
 def faker_bin(total_bin, IMF_author, file_in, dist):
