@@ -39,6 +39,7 @@ with open(confg) as fstream:
 try:
     os.system('rm -r results/hpx*')
     os.system('rm results/ftp/*.fits')
+    os.system('rm results/objects.dat')
 except:
     print('No data to clean.')
 
@@ -91,14 +92,16 @@ for i in ipix_files:
 
 outputs = [r.result() for r in res]
 
-print('Total of {:d} pixels read and filtered.'.format(
-    int(np.sum(outputs))))
+print('Total of {:d} pixels read and filtered.'.format(int(np.sum(outputs))))
 
 # Expanding catalog depending on the case
 print('Area sampled: {:.2f} square degrees'.format(area_sampled))
 
+if param['survey']== 'lsst': ftp_infile_path = "/lustre/t1/cl/lsst/gawa_project/adriano.pieres/ga_sim/surveys/lsst/DP0_ftp"
+if param['survey']== 'des': ftp_infile_path = "/lustre/t1/cl/lsst/gawa_project/adriano.pieres/ga_sim/surveys/des/ftp"
+
 files_ftp = glob.glob(param['ftp_path'] + '/*.fits')
-files_DP0_ftp = glob.glob(param['ftp_infile_path'] + '/' + str(int(param['nside_infile'])) + '/*.fits')
+files_DP0_ftp = glob.glob(ftp_infile_path + '/' + str(int(param['nside_infile'])) + '/*.fits')
 
 good_DP0_ftp = []
 
@@ -107,7 +110,8 @@ for ii in files_DP0_ftp:
     signal = data['SIGNAL']
     cov_fact_ipix = np.sum(signal) * hp.nside2pixarea(param['nside_ftp'], degrees=True) / hp.nside2pixarea(param['nside_infile'], degrees=True)
     if cov_fact_ipix > param['cov_factor']:
-        good_DP0_ftp.extend([ii])
+        if int((ii.split('/')[-1]).split('.')[0]) in ipix_files:
+            good_DP0_ftp.extend([ii])
 
 ipix_ftp = [i.split('/')[-1] for i in files_ftp]
 
@@ -130,7 +134,7 @@ RA_pix, DEC_pix, r_exp, ell, pa, dist, mass, mM, hp_sample_un = gen_clus_file(
     param)
 
 # Loading photometric errors
-mag1_, err1_, err2_ = read_error(param['file_error'], 0.000, 0.000)
+mag1_, err1_, err2_ = read_error(param['file_error'] + '/' + param['survey'] + '/errors.dat', 0.000, 0.000)
 
 # Simulating stellar clusters.
 print('Ready to simulate clusters.')

@@ -133,7 +133,7 @@ def join_sim_field_stars(i, param):
     return 1
 
 
-def sample_ipix_cat(ipix_ftp, good_DP0_ftp, param):
+def sample_ipix_cat(ipix_ftp, good_ftp, param):
     """Resizes the simulation (field stars) in order to populate regions that are not
     filled with field stars.
 
@@ -141,7 +141,7 @@ def sample_ipix_cat(ipix_ftp, good_DP0_ftp, param):
     ----------
     ipix_ftp : int
         Single ipix in simulation of field stars.
-    good_DP0_ftp : list
+    good_ftp : list
         List of pixels with coverage larger than minimum set by user.
     param : dictionary
         Dictionary with all the input parameters.
@@ -150,7 +150,7 @@ def sample_ipix_cat(ipix_ftp, good_DP0_ftp, param):
     globals().update(param)
 
     # DP0 ftp data:
-    ipix_DP0_ftp = np.random.choice(good_DP0_ftp, size=1)[0]
+    ipix_DP0_ftp = np.random.choice(good_ftp, size=1)[0]
     DP0_ftp_data = getdata(ipix_DP0_ftp)
     area_ipix_DP0_ftp = hp.nside2pixarea(nside_ftp, degrees=True) * np.sum(DP0_ftp_data['SIGNAL'])
 
@@ -233,33 +233,61 @@ def filter_ipix_stars(i, param):
     hdu_sgp = fits.open(red_maps_path + "/SFD_dust_4096_sgp.fits", memmap=True)
     sgp = hdu_sgp[0].data
 
+    if survey=='lsst':
+        cat_infile_path = "/lustre/t1/cl/lsst/dp0_skinny/DP0/DP0_FULL/healpix"
+    if survey=='des':
+        cat_infile_path = "/lustre/t1/cl/des/Y6A2_COADD/Y6A2_GOLD/healpix"
+
     try:
         filepath = Path('{}/{}'.format(cat_infile_path,
                         str(nside_infile)), "{}.fits".format(str(i)))
         data = getdata(filepath)
         RA = data['RA']
         DEC = data['DEC']
-        MAG_G = data['MAG_G']
-        MAGERR_G = data['MAGERR_G']
-        MAG_R = data['MAG_R']
-        MAGERR_R = data['MAGERR_R']
-        EXT = data['EXTENDEDNESS']
+        if survey == 'lsst':
+            MAG_G = data['MAG_G']
+            MAGERR_G = data['MAGERR_G']
+            MAG_R = data['MAG_R']
+            MAGERR_R = data['MAGERR_R']
+            EXT = data['EXTENDEDNESS']
 
-        MAG_G = np.nan_to_num(MAG_G, copy=True, nan=-99)
-        MAGERR_G = np.nan_to_num(MAGERR_G, copy=True, nan=-99)
-        MAG_R = np.nan_to_num(MAG_R, copy=True, nan=-99)
-        MAGERR_R = np.nan_to_num(MAGERR_R, copy=True, nan=-99)
+            MAG_G = np.nan_to_num(MAG_G, copy=True, nan=-99)
+            MAGERR_G = np.nan_to_num(MAGERR_G, copy=True, nan=-99)
+            MAG_R = np.nan_to_num(MAG_R, copy=True, nan=-99)
+            MAGERR_R = np.nan_to_num(MAGERR_R, copy=True, nan=-99)
 
-        # cond2 = (RA > ra_min) & (RA < ra_max) & (
-        #     DEC > dec_min) & (DEC < dec_max) & (EXT == 0)
-        cond2 = (EXT == 0)
+            # cond2 = (RA > ra_min) & (RA < ra_max) & (
+            #     DEC > dec_min) & (DEC < dec_max) & (EXT == 0)
+            cond2 = (EXT == 0)
 
-        RA = RA[cond2]
-        DEC = DEC[cond2]
-        MAG_G = MAG_G[cond2]
-        MAGERR_G = MAGERR_G[cond2]
-        MAG_R = MAG_R[cond2]
-        MAGERR_R = MAGERR_R[cond2]
+            RA = RA[cond2]
+            DEC = DEC[cond2]
+            MAG_G = MAG_G[cond2]
+            MAGERR_G = MAGERR_G[cond2]
+            MAG_R = MAG_R[cond2]
+            MAGERR_R = MAGERR_R[cond2]
+        if survey == 'des':
+            MAG_G = data['SOF_BDF_MAG_G_CORRECTED']
+            MAGERR_G = data['SOF_BDF_MAG_ERR_G']
+            MAG_R = data['SOF_BDF_MAG_R_CORRECTED']
+            MAGERR_R = data['SOF_BDF_MAG_ERR_R']
+            SM = data['WAVG_SPREAD_MODEL_R']
+
+            MAG_G = np.nan_to_num(MAG_G, copy=True, nan=-99)
+            MAGERR_G = np.nan_to_num(MAGERR_G, copy=True, nan=-99)
+            MAG_R = np.nan_to_num(MAG_R, copy=True, nan=-99)
+            MAGERR_R = np.nan_to_num(MAGERR_R, copy=True, nan=-99)
+
+            # cond2 = (RA > ra_min) & (RA < ra_max) & (
+            #     DEC > dec_min) & (DEC < dec_max) & (EXT == 0)
+            cond2 = (np.abs(SM) < 0.005)
+
+            RA = RA[cond2]
+            DEC = DEC[cond2]
+            MAG_G = MAG_G[cond2]
+            MAGERR_G = MAGERR_G[cond2]
+            MAG_R = MAG_R[cond2]
+            MAGERR_R = MAGERR_R[cond2]
 
         c = SkyCoord(
             ra=RA * u.degree,
@@ -293,6 +321,43 @@ def filter_ipix_stars(i, param):
     except:
         print('Missing file ipix {:d}'.format(i))
     return 1
+
+
+def select_ipix_clus(nside, ra_min, ra_max, dec_min, dec_max, inclusive=False):
+    """Select ipix from a region of sky following same ra and dec ranges
+    (insted of Healpix standard geodesics).
+
+    Parameters
+    ----------
+    nside : integer
+        Nside of HealPixels.
+    ra_min : float
+        Minimum in RA (deg).
+    ra_max : float
+        Maximum in RA (deg).
+    dec_min : float
+        Minimum in DEC (deg).
+    dec_max : float
+        Maximum in DEC (deg).
+    inclusive : bool, optional
+        If True, all the pixels that are in that region will be selected.
+        If False, only the pixels with the center in that region will be
+        selected, by default False.
+
+    Returns
+    -------
+    list
+        Sample of requested pixels.
+    """
+    theta1 = np.pi/2 - np.deg2rad(dec_max)
+    theta2 = np.pi/2 - np.deg2rad(dec_min)
+    hp_all = hp.query_strip(nside, theta1, theta2,
+                            inclusive=inclusive, nest=False, buff=None)
+    ra_c, dec_c = hp.pix2ang(nside, hp_all, nest=False, lonlat=True)
+    cond = (ra_c > ra_min) & (ra_c <= ra_max)
+    hp_sel = hp_all[cond]
+    hp_sel_nest = hp.ring2nest(nside, hp_sel)
+    return hp_sel_nest
 
 
 def select_ipix(nside, ra_min, ra_max, dec_min, dec_max, inclusive=False):
@@ -742,8 +807,8 @@ def gen_clus_file(param):
 
     globals().update(param)
 
-    border_extract_ra = border_extract / np.cos(np.deg2rad(border_extract))
-    hp_sample_un = select_ipix(nside_ini, ra_min + border_extract_ra,
+    border_extract_ra = border_extract / np.cos(np.deg2rad(0.5*(dec_max + dec_min)))
+    hp_sample_un = select_ipix_clus(nside_ini, ra_min + border_extract_ra,
                                ra_max - border_extract_ra,
                                dec_min + border_extract,
                                dec_max - border_extract)
@@ -1422,7 +1487,7 @@ def faker(N_stars_cmd, frac_bin, IMF_author, x0, y0, rexp, ell_, pa,
     p_values[star[:, 2] < mag_ref_comp] = 1.0
 
     star_comp = np.random.choice(
-        len(star[:, 0]), N_stars_cmd, replace=False, p=p_values / np.sum(p_values)
+        len(star[:, 0]), N_stars_cmd, replace=True, p=p_values / np.sum(p_values)
     )
 
     rexp_deg = (180 / np.pi) * np.arctan(rexp / dist)
@@ -1702,6 +1767,9 @@ def write_sim_clus_features(param, hp_sample_un, mM):
         HPX_clean = hp.ang2pix(
             nside_ini, RA_clean, DEC_clean, nest=True, lonlat=True)
 
+        file_error_ = file_error + '/' + survey + '/errors.dat'
+        file_mask_ = file_mask + '/' + survey + '/mask.dat'
+
         with open(filepath, "a") as out_file:
             # try:
             cond = HPX == j
@@ -1724,8 +1792,8 @@ def write_sim_clus_features(param, hp_sample_un, mM):
                 snr_inner_circle_arcmin / 60.,
                 snr_rin_annulus_arcmin / 60.,
                 snr_rout_annulus_arcmin / 60.,
-                file_error,
-                file_mask
+                file_error_,
+                file_mask_
             )
             SNR_clean = snr_estimate(
                 RA__clean,
@@ -1738,8 +1806,8 @@ def write_sim_clus_features(param, hp_sample_un, mM):
                 snr_inner_circle_arcmin / 60.,
                 snr_rin_annulus_arcmin / 60.,
                 snr_rout_annulus_arcmin / 60.,
-                file_error,
-                file_mask
+                file_error_,
+                file_mask_
             )
 
             cond_clus = (cond) & (GC == 1)
