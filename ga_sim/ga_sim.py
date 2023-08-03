@@ -191,7 +191,7 @@ def sample_ipix_cat(ipix_ftp, good_ftp, param):
     MAG_R_ = [MAG_R[i] for i in range(len(MAG_G)) if cond2[i]]
     MAGERR_R_ = [MAGERR_R[i] for i in range(len(MAG_G)) if cond2[i]]
 
-    HPX = hp.ang2pix(nside_ini, RA_, DEC_, nest=True, lonlat=True)
+    # HPX = hp.ang2pix(nside_ini, RA_, DEC_, nest=True, lonlat=True)
 
     col0 = fits.Column(name="ra", format="D",
                        array=RA_)
@@ -278,9 +278,13 @@ def filter_ipix_stars(i, param):
             MAG_R = np.nan_to_num(MAG_R, copy=True, nan=-99)
             MAGERR_R = np.nan_to_num(MAGERR_R, copy=True, nan=-99)
 
+            selection_1 = (data['SPREAD_MODEL_I'] + 3. * data['SPREADERR_MODEL_I']) > 0.005
+            selection_2 = (data['SPREAD_MODEL_I'] + 1. * data['SPREADERR_MODEL_I']) > 0.003
+            selection_3 = (data['SPREAD_MODEL_I'] - 1. * data['SPREADERR_MODEL_I']) > 0.002
+            ext_coadd = selection_1.astype(int) + selection_2.astype(int) + selection_3.astype(int)
             # cond2 = (RA > ra_min) & (RA < ra_max) & (
             #     DEC > dec_min) & (DEC < dec_max) & (EXT == 0)
-            cond2 = (np.abs(SM) < 0.005)
+            cond2 = (ext_coadd < 2)
 
             RA = RA[cond2]
             DEC = DEC[cond2]
