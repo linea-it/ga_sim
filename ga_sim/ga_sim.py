@@ -5,7 +5,6 @@ import astropy.io.fits as fits
 import healpy as hp
 import matplotlib.path as mpath
 import numpy as np
-import sqlalchemy
 import glob
 from astropy.table import Table
 from astropy import units as u
@@ -103,9 +102,11 @@ def join_sim_field_stars(i, param):
 
         HPX = hp.ang2pix(nside_ini, RA_c, DEC_c, nest=True, lonlat=True)
 
-        cond = (HPX == int((i.split('/')[-1])[:-5]))&(RA_c > ra_min)&(RA_c < ra_max)&(DEC_c > dec_min)&(DEC_c < dec_max)
+        cond = (HPX == int((i.split('/')[-1])[:-5])) & (RA_c > ra_min) & (
+            RA_c < ra_max) & (DEC_c > dec_min) & (DEC_c < dec_max)
 
-        RA_, DEC_, MAGG_, MAGERR_G_, MAGR_, MAGERR_R_ = RA_c[cond], DEC_c[cond], MAGG_c[cond], MAGERR_G_c[cond], MAGR_c[cond], MAGERR_R_c[cond]
+        RA_, DEC_, MAGG_, MAGERR_G_, MAGR_, MAGERR_R_ = RA_c[cond], DEC_c[
+            cond], MAGG_c[cond], MAGERR_G_c[cond], MAGR_c[cond], MAGERR_R_c[cond]
 
         GC_ = np.repeat(1, len(RA_))
 
@@ -152,16 +153,18 @@ def sample_ipix_cat(ipix_ftp, good_ftp, param):
     # DP0 ftp data:
     ipix_DP0_ftp = np.random.choice(good_ftp, size=1)[0]
     DP0_ftp_data = getdata(ipix_DP0_ftp)
-    area_ipix_DP0_ftp = hp.nside2pixarea(nside_ftp, degrees=True) * np.sum(DP0_ftp_data['SIGNAL'])
+    area_ipix_DP0_ftp = hp.nside2pixarea(
+        nside_ftp, degrees=True) * np.sum(DP0_ftp_data['SIGNAL'])
 
     # ftp data
     ftp_data = getdata(ipix_ftp)
-    area_ipix_ftp = hp.nside2pixarea(nside_ftp, degrees=True) * np.sum(ftp_data['SIGNAL'])
+    area_ipix_ftp = hp.nside2pixarea(
+        nside_ftp, degrees=True) * np.sum(ftp_data['SIGNAL'])
 
     ipix_DP0_cat = hpx_cats_filt_path + '/' + ipix_DP0_ftp.split('/')[-1]
     DP0_cat_data = getdata(ipix_DP0_cat)
     mag_DP0 = DP0_cat_data['MAG_G']
-    
+
     n_stars_sampled = int(len(mag_DP0) * area_ipix_ftp / area_ipix_DP0_ftp)
 
     MAG_G = DP0_cat_data['MAG_G']
@@ -208,7 +211,8 @@ def sample_ipix_cat(ipix_ftp, good_ftp, param):
     # col7 = fits.Column(name="HPX64", format="K", array=HPX64)
     cols = fits.ColDefs([col0, col1, col2, col3, col4, col5])
     tbhdu = fits.BinTableHDU.from_columns(cols)
-    tbhdu.writeto(hpx_cats_path + '/' + ipix_ftp.split('/')[-1], overwrite=True)
+    tbhdu.writeto(hpx_cats_path + '/' +
+                  ipix_ftp.split('/')[-1], overwrite=True)
 
     return 1
 
@@ -233,9 +237,9 @@ def filter_ipix_stars(i, param):
     hdu_sgp = fits.open(red_maps_path + "/SFD_dust_4096_sgp.fits", memmap=True)
     sgp = hdu_sgp[0].data
 
-    if survey=='lsst':
+    if survey == 'lsst':
         cat_infile_path = "/lustre/t1/cl/lsst/dp0_skinny/DP0/DP0_FULL/healpix"
-    if survey=='des':
+    if survey == 'des':
         cat_infile_path = "/lustre/t1/cl/des/Y6A2_COADD/Y6A2_GOLD/healpix"
 
     try:
@@ -278,10 +282,14 @@ def filter_ipix_stars(i, param):
             MAG_R = np.nan_to_num(MAG_R, copy=True, nan=-99)
             MAGERR_R = np.nan_to_num(MAGERR_R, copy=True, nan=-99)
 
-            selection_1 = (data['SPREAD_MODEL_I'] + 3. * data['SPREADERR_MODEL_I']) > 0.005
-            selection_2 = (data['SPREAD_MODEL_I'] + 1. * data['SPREADERR_MODEL_I']) > 0.003
-            selection_3 = (data['SPREAD_MODEL_I'] - 1. * data['SPREADERR_MODEL_I']) > 0.002
-            ext_coadd = selection_1.astype(int) + selection_2.astype(int) + selection_3.astype(int)
+            selection_1 = (data['SPREAD_MODEL_I'] + 3. *
+                           data['SPREADERR_MODEL_I']) > 0.005
+            selection_2 = (data['SPREAD_MODEL_I'] + 1. *
+                           data['SPREADERR_MODEL_I']) > 0.003
+            selection_3 = (data['SPREAD_MODEL_I'] - 1. *
+                           data['SPREADERR_MODEL_I']) > 0.002
+            ext_coadd = selection_1.astype(
+                int) + selection_2.astype(int) + selection_3.astype(int)
             # cond2 = (RA > ra_min) & (RA < ra_max) & (
             #     DEC > dec_min) & (DEC < dec_max) & (EXT == 0)
             cond2 = (ext_coadd < 2)
@@ -422,7 +430,7 @@ def export_results(proc_dir, res_path):
     os.system('mkdir -p ' + new_dir)
     os.system('mkdir -p ' + new_dir + '/detections')
     os.system('mkdir -p ' + new_dir + '/simulations')
-    #os.system('mkdir -p ' + new_dir + '/simulations/sample_data')
+    # os.system('mkdir -p ' + new_dir + '/simulations/sample_data')
     # os.system('cp sample_data/*.dat' + ' ' +
     #          new_dir + '/simulations/sample_data/')
     # os.system('cp sample_data/*.asc' + ' ' +
@@ -534,7 +542,8 @@ def clean_input_cat_dist(dir_name, file_name, ra_str, dec_str, max_dist_arcsec, 
     for i, j in enumerate(RA):
         length_dec = init_dist
         length_ra = init_dist / np.cos(np.deg2rad(DEC[i]))
-        cond = (RA < j + length_ra) & (RA > j - length_ra) & (DEC < DEC[i] + length_dec) & (DEC > DEC[i] - length_dec)
+        cond = (RA < j + length_ra) & (RA > j - length_ra) & (DEC <
+                                                              DEC[i] + length_dec) & (DEC > DEC[i] - length_dec)
         RA_ = RA[cond]
         DEC_ = DEC[cond]
         dist = dist_ang(RA_, DEC_, j, DEC[i])
@@ -544,7 +553,7 @@ def clean_input_cat_dist(dir_name, file_name, ra_str, dec_str, max_dist_arcsec, 
         else:
             clean_idx.append(i)
 
-    try:   
+    try:
         data_clean = np.array([data[:][ii] for ii in clean_idx])
         # print('== DC == ', data_clean, clean_idx[0], clean_idx[-1], np.shape(data_clean))
         col = [iii for iii in range(len(label_columns))]
@@ -558,7 +567,8 @@ def clean_input_cat_dist(dir_name, file_name, ra_str, dec_str, max_dist_arcsec, 
         tbhdu = fits.BinTableHDU.from_columns(cols)
         tbhdu.writeto(output_file, overwrite=True)
     except:
-        print('Some problema with pixel {} or this pixel is empty'.format(file_name.split('/')[-1]))
+        print('Some problema with pixel {} or this pixel is empty'.format(
+            file_name.split('/')[-1]))
 
     return 1
 
@@ -805,17 +815,18 @@ def gen_clus_file(param):
     list
         RA_pix, DEC_pix, r_exp, ell, pa, dist, mass, mM, hp_sample_un
         Position of the center of ipix, exponential radius in parsecs,
-        ellipticity. positional angle, distance in parsecs, mass in 
+        ellipticity. positional angle, distance in parsecs, mass in
         Sun masses, distance modulus, and list of ipix sampled.
     """
 
     globals().update(param)
 
-    border_extract_ra = border_extract / np.cos(np.deg2rad(0.5*(dec_max + dec_min)))
+    border_extract_ra = border_extract / \
+        np.cos(np.deg2rad(0.5*(dec_max + dec_min)))
     hp_sample_un = select_ipix_clus(nside_ini, ra_min + border_extract_ra,
-                               ra_max - border_extract_ra,
-                               dec_min + border_extract,
-                               dec_max - border_extract)
+                                    ra_max - border_extract_ra,
+                                    dec_min + border_extract,
+                                    dec_max - border_extract)
 
     RA_pix, DEC_pix = hp.pix2ang(
         nside_ini, hp_sample_un, nest=True, lonlat=True)
@@ -832,8 +843,7 @@ def gen_clus_file(param):
         mM = mM_min + np.random.rand(len(hp_sample_un)) * (mM_max - mM_min)
         r_exp = 10**(log10_rexp_min * (log10_rexp_max / log10_rexp_min)
                      ** np.random.rand(len(hp_sample_un)))
-        mass = 10**(log10_mass_min * (log10_mass_max / log10_mass_min)
-                    ** np.random.rand(len(hp_sample_un)))
+        MV = MV_min + np.random.rand(len(hp_sample_un)) * (MV_max - MV_min)
         dist = 10 ** ((mM/5) + 1)
 
         ell = ell_min + np.random.rand(len(hp_sample_un)) * (ell_max - ell_min)
@@ -842,8 +852,8 @@ def gen_clus_file(param):
         for i in range(len(hp_sample_un)):
             print('{:d} {:.4f} {:.4f} {:.4f} {:.4f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f}'.format(
                 hp_sample_un[i], L[i], B[i], RA_pix[i], DEC_pix[i], r_exp[i], ell[i], pa[i],
-                mass[i], dist[i]), file=obj_file)
-    return RA_pix, DEC_pix, r_exp, ell, pa, dist, mass, mM, hp_sample_un
+                MV[i], dist[i]), file=obj_file)
+    return RA_pix, DEC_pix, r_exp, ell, pa, dist, MV, mM, hp_sample_un
 
 
 def read_cat(tablename, ra_min, ra_max, dec_min, dec_max, mmin, mmax, cmin, cmax, outfile, AG_AV, AR_AV, ngp, sgp, results_path, hpx_ftp, nside3, nside_ftp, mode, area_sampled):
@@ -1011,7 +1021,7 @@ def download_iso(version, phot_system, Z, age, av_ext, out_file, iter_max):
     av_ext : float
         Extinction in V band. Usually 0.000.
     out_file : str
-        Name of the output file, which is written as 
+        Name of the output file, which is written as
         output.
     """
 
@@ -1312,8 +1322,8 @@ def unc(mag, mag_table, err_table):
     return err_interp
 
 
-def faker(N_stars_cmd, frac_bin, IMF_author, x0, y0, rexp, ell_, pa,
-          dist, hpx, cmin, cmax, mmin, mmax, mag1_, err1_, err2_, file_iso,
+def faker(MV, frac_bin, IMF_author, x0, y0, rexp, ell_, pa,
+          mM, hpx, cmin, cmax, mmin, mmax, mag1_, err1_, err2_, file_iso,
           output_path, mag_ref_comp, comp_mag_ref, comp_mag_max):
     """Creates an array with positions, magnitudes, magnitude errors and magnitude
     uncertainties for the simulated stars in two bands.
@@ -1392,10 +1402,8 @@ def faker(N_stars_cmd, frac_bin, IMF_author, x0, y0, rexp, ell_, pa,
     # Cria o diretório de output se não existir
     os.system('mkdir -p ' + output_path)
 
-    mass, mag1, mag2 = np.loadtxt(file_iso, usecols=(3, 26, 27), unpack=True)
-
-    # bin in mass (solar masses)
-    binmass = 5.0e-4
+    mass, int_IMF, mag1, mag2 = np.loadtxt(
+        file_iso, usecols=(3, 4, 26, 27), unpack=True)
 
     mag1 += 5 * np.log10(dist) - 5
     mag2 += 5 * np.log10(dist) - 5
@@ -1404,59 +1412,46 @@ def faker(N_stars_cmd, frac_bin, IMF_author, x0, y0, rexp, ell_, pa,
     # bright part of magnitude. The mass is not the total mass of the cluster,
     # only a lower limit for the total mass.
     cond = mag1 <= mmax + 0.5
-    mass, mag1, mag2 = mass[cond], mag1[cond], mag2[cond]
+    mass, mag1, mag2, int_IMF = mass[cond], mag1[cond], mag2[cond], int_IMF[cond]
 
-    # amostra is an array with the amount of stars in each bin of mass. ex.: [2,3,4,1,2]
-    massmin = np.min(mass)
-    massmax = np.max(mass)
-    bins_mass = int((massmax - massmin) / binmass)
-    amostra = np.zeros(bins_mass)
+    mass = np.concatenate((mass, ([mass[-1]])))
+    mag1 = np.concatenate((mag1, ([mag1[-1]])))
+    mag2 = np.concatenate((mag2, ([mag2[-1]])))
+    int_IMF = np.concatenate((int_IMF, ([int_IMF[-1]])))
 
-    IMF = IMF_(IMF_author)
+    # for j, (radius_min, radius_max) in enumerate(zip(rlim[0:-1], rlim[1:])):
+    n_stars = [i-j for i, j in zip(int_IMF[0:-1], int_IMF[1::])]
+    n_stars.append(int_IMF[-2]-int_IMF[-1])
+    n_stars /= mass
 
-    for i in range(bins_mass):
-        if (i * binmass) + massmin <= IMF["IMF_mass_break"]:
-            amostra[i] = round((massmin + i * binmass) ** (IMF["IMF_alpha_1"]))
-        else:
-            amostra[i] = round((massmin + i * binmass) ** (IMF["IMF_alpha_2"]))
-    # Soma is the total amount of stars (float), the sum of amostra
-    soma = np.sum(amostra)
-    # Now normalizing the array amostra
-    for i in range(len(amostra)):
-        amostra[i] = N_stars_cmd * amostra[i] / soma
+    idx_n_stars_int = []
+    flux_tot_account = []
 
-    massa_calculada = np.zeros(int(N_stars_cmd))
+    while (-2.5 * np.log10(np.sum(flux_tot_account)) > MV + mM):
+        idx = np.random.choice(len(mass), 1, p=n_stars)[0]
+        idx_n_stars_int.append(idx)
+        flux_tot_account.append(10. ** (-0.4 * mag1[idx]))
 
-    count = 0
-
-    for j in range(bins_mass):  # todos os intervalos primarios de massa
-        for k in range(
-            int(amostra[j])
-        ):  # amostra() eh a amostra de estrelas dentro do intervalo de massa
-            massa_calculada[count] = (
-                massmin + (j * binmass) + (k * binmass / amostra[j])
-            )
-            # massa calculada eh a massa de cada estrela
-            count += 1
+    n_stars_int = np.bincount(n_stars_int)
+    total_stars_int = np.sum(n_stars_int)
 
     # 0-RA, 1-DEC, 2-mag1, 3-mag1err, 4-unc1, 5-mag2, 6-mag2err, 7-unc2, 8-mass
-    star = np.zeros((N_stars_cmd, 9))
-
-    for i in range(N_stars_cmd):
-        for k in range(len(mass) - 1):  # abre as linhas do arquivo em massa
-            # se a massa estiver no intervalo das linhas
-            if (mass[k] < massa_calculada[i]) & (mass[k + 1] > massa_calculada[i]):
-                # vai abrir tantas vezes quantas forem as estrelas representadas
-                intervalo = (massa_calculada[i] - mass[k]) / (
-                    mass[k + 1] - mass[k]
-                )  # intervalo entre zero e um
-                star[i, 2] = mag1[k] - (mag1[k] - mag1[k + 1]) * intervalo
-                star[i, 5] = mag2[k] - (mag2[k] - mag2[k + 1]) * intervalo
-                star[i, 8] = massa_calculada[i]
+    star = np.zeros((total_stars_int, 9))
+    count = 0
+    for i, j in enumerate(n_stars_int):
+        if j > 0:
+            intervalo = np.random.rand(j)
+            star[count:count+j, 2] = mag1[i] - \
+                (mag1[i] - mag1[i + 1]) * intervalo
+            star[count:count+j, 5] = mag2[i] - \
+                (mag2[i] - mag2[i + 1]) * intervalo
+            star[count:count+j, 8] = mass[i] - \
+                (mass[i] - mass[i + 1]) * intervalo
+            count += j
 
     # apply binarity
     # definition of binarity: fb = N_stars_in_binaries / N_total
-    N_stars_bin = int(N_stars_cmd / ((2.0 / frac_bin) - 1))
+    N_stars_bin = int(total_stars_int / ((2.0 / frac_bin) - 1))
     mag1_bin, mag2_bin, mass_bin = faker_bin(
         N_stars_bin, "Kroupa", file_iso, dist)
 
@@ -1842,13 +1837,13 @@ def write_sim_clus_features(param, hp_sample_un, mM):
 
             if len(RA[cond_clus]) == 0:
                 print("{:d} {:d} {:.2f} {:.2f} {:d} {:.2f} {:.2f}".format(
-                        hp_sample_un[i], 0, 999, SNR,
-                        0, 999, SNR_clean), file=out_file)
+                    hp_sample_un[i], 0, 999, SNR,
+                    0, 999, SNR_clean), file=out_file)
             else:
                 print("{:d} {:d} {:.2f} {:.2f} {:d} {:.2f} {:.2f}".format(
-                        hp_sample_un[i], len(RA[cond_clus]), M_abs_V, SNR,
-                        len(RA_clean[cond_clus_clean]
-                            ), M_abs_V_clean, SNR_clean), file=out_file)
+                    hp_sample_un[i], len(RA[cond_clus]), M_abs_V, SNR,
+                    len(RA_clean[cond_clus_clean]
+                        ), M_abs_V_clean, SNR_clean), file=out_file)
     out_file.close()
 
     return filepath
