@@ -18,23 +18,27 @@ import os
 import glob
 import parsl
 from parsl.app.app import python_app
-import condor
+# import condor
 import sys
 import healpy as hp
 import cProfile, pstats
-
+from ga_sim.parsl_config import get_config
 
 profiler = cProfile.Profile()
 profiler.enable()
 # Loading config and files, creating folders
 parsl.clear()
-parsl.load(condor.get_config('htcondor'))
-parsl.set_stream_logger()
+#parsl_config = get_config(ga_sim_config["executor"])
+#parsl.set_stream_logger()
 
 confg = "ga_sim.json"
 
 with open(confg) as fstream:
     param = json.load(fstream)
+
+parsl_config = get_config(param["executor"])
+parsl.set_stream_logger()
+parsl.load(parsl_config)
 
 try:
     os.system('rm -r results/hpx*')

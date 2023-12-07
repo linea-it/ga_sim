@@ -5,7 +5,7 @@ import astropy.io.fits as fits
 import healpy as hp
 import matplotlib.path as mpath
 import numpy as np
-import sqlalchemy
+# import sqlalchemy
 import glob
 from astropy.table import Table
 from astropy import units as u
@@ -13,7 +13,88 @@ from astropy.coordinates import SkyCoord, match_coordinates_sky
 from astropy.io.fits import getdata
 from pathlib import Path
 from itertools import compress
+from scipy.optimize import curve_fit
+from scipy.stats import truncnorm, norm
 import logging
+
+
+def gauss(x, mu, sigma, A):
+    return A * np.exp(-(x-mu)**2/2/sigma**2)
+
+
+def bimodal(x, mu1, sigma1, A1, mu2, sigma2, A2):
+    return gauss(x, mu1, sigma1, A1) + gauss(x, mu2, sigma2, A2)
+
+
+def fit_bimodal(data, kick, n):
+    y, x = np.histogram(data, n)
+    x=(x[1:]+x[:-1])/2 # for len(x)==len(y)
+    params, cov = curve_fit(bimodal, x, y, kick)
+    return params, cov
+
+
+def read_ref(param):
+
+    Mv, rhl_pc = np.loadtxt(param['cat_dg'], usecols=(8, 10), unpack=True)
+
+    mM_GC, Mv_GC, rhl_arcmin_GC = np.loadtxt(param['cat_gc'], usecols=(5, 6, 7), unpack=True)
+
+    dist_GC = 10. ** (1 + (mM_GC / 5))
+
+    rhl_pc_GC = (rhl_arcmin_GC / (57.3 * 60)) * dist_GC
+
+    rhl_pc = np.log10(np.concatenate((rhl_pc, rhl_pc_GC)))
+
+    Mv = np.concatenate((Mv, Mv_GC))
+    
+    return Mv, rhl_pc
+
+def mv_rhl_from_data(N_desired, param, Mv_min=-14., Mv_max = 2):
+    # Read data from real objects
+    Mv, rhl_pc = read_ref(param)
+
+    # Fit gaussians
+    params_Mv, cov_Mv = fit_bimodal(Mv, (-8.0, 1.0, 25, -4.0, 2.0, 12), 20)
+    params_rhl, cov_rhl = fit_bimodal(rhl_pc, (0.7, .25, 50, 1.8, .5, 20), 100)
+
+    N1 = params_Mv[1] * params_Mv[2]
+    N2 = params_Mv[4] * params_Mv[5]
+    N1 = int(N_desired * (N1 / (N1 + N2)))
+    N2 = N_desired - N1
+
+    # print(N1, N2)
+
+    Mv1 = []; Mv2 = []
+
+    while len(Mv1) < N1:
+        m = np.random.normal(params_Mv[0], params_Mv[1], 1)
+        if (m > Mv_min)&(m < Mv_max):
+            Mv1.extend(m)
+
+    while len(Mv2) < N2:
+        m = np.random.normal(params_Mv[3], params_Mv[4], 1)
+        if (m > Mv_min)&(m < Mv_max):
+            Mv2.extend(m)
+
+    rhl1 = []; rhl2 = []
+    
+    while len(Mv1) < N1:
+        m = np.random.normal(params_Mv[0], params_Mv[1], 1)
+        if (m > Mv_min)&(m < Mv_max):
+            Mv1.extend(m)
+
+    while len(Mv2) < N2:
+        m = np.random.normal(params_Mv[3], params_Mv[4], 1)
+        if (m > Mv_min)&(m < Mv_max):
+            Mv2.extend(m)
+
+    rhl1 = np.random.normal(params_rhl[0], params_rhl[1], N1)
+    rhl2 = np.random.normal(params_rhl[3], params_rhl[4], N2)
+    
+    Mv_out = np.concatenate((Mv1, Mv2))
+    rhl_out = np.concatenate((rhl1, rhl2))
+
+    return Mv_out, rhl_out
 
 
 def get_hpx_ftp_data(param):
@@ -830,11 +911,18 @@ def gen_clus_file(param):
         # Creating random distances, masses, ellipticities and positional
         # angles based on limits required, and printing to file objects.dat.
         mM = mM_min + np.random.rand(len(hp_sample_un)) * (mM_max - mM_min)
+        dist = 10 ** ((mM/5) + 1)
         r_exp = 10**(log10_rexp_min * (log10_rexp_max / log10_rexp_min)
                      ** np.random.rand(len(hp_sample_un)))
-        mass = 10**(log10_mass_min * (log10_mass_max / log10_mass_min)
-                    ** np.random.rand(len(hp_sample_un)))
-        dist = 10 ** ((mM/5) + 1)
+        if Mv_hlr_from_data:
+            Mv_prev, hlr_prev = mv_rhl_from_data(len(hp_sample_un), param)
+            mass = 10 ** (-0.2907 * (Mv_prev + mM) + 7.96)
+            r_exp = [(10 ** i) / 1.7 for i in hlr_prev]
+        else:
+            mass = 10**(log10_mass_min * (log10_mass_max / log10_mass_min)
+                        ** np.random.rand(len(hp_sample_un)))
+            r_exp = 10**(log10_rexp_min * (log10_rexp_max / log10_rexp_min)
+	                ** np.random.rand(len(hp_sample_un)))
 
         ell = ell_min + np.random.rand(len(hp_sample_un)) * (ell_max - ell_min)
         pa = pa_min + np.random.rand(len(hp_sample_un)) * (pa_max - pa_min)
