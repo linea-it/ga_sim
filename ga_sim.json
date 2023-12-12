@@ -28,7 +28,7 @@
     "log10_rexp_min": 0.5,
     "log10_rexp_max": 3.1,
     "frac_bin": 0.2,
-    "IMF_author": "Kroupa",
+    "IMF_author": "Chabrier_exp",
     "border_extract": 1.0,
     "Ag_AV": 1.17450,
     "Ar_AV": 0.86666,

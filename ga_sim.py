@@ -56,7 +56,7 @@ os.makedirs(param['hpx_cats_filt_path'], exist_ok=True)
 
 # Downloading isochrone and printing some information
 download_iso(param['padova_version_code'], param['survey'], 0.0152 * (10 ** param['MH_simulation']),
-             param['age_simulation'], param['av_simulation'], param['file_iso'], 5)
+             param['age_simulation'], param['av_simulation'], param["IMF_author"], param['file_iso'], 5)
 
 iso_info = np.loadtxt(param['file_iso'], usecols=(1, 2, 3, 26), unpack=True)
 FeH_iso, logAge_iso, m_ini_iso, g_iso = iso_info[0][0], iso_info[1][0], iso_info[2], iso_info[3]
@@ -144,23 +144,21 @@ mag1_, err1_, err2_ = read_error(param['file_error'] + '/' + param['survey'] + '
 print('Ready to simulate clusters.')
 
 @python_app
-def faker_app(N_stars_cmd, frac_bin, IMF_author, x0, y0, rexp, ell_, pa, dist, hpx, param, mag1_, err1_, err2_, output_path, mag_ref_comp,
-              comp_mag_ref,
-              comp_mag_max):
+def faker_app(MV, frac_bin, x0, y0, rexp, ell_, pa, dist, hpx, param, mag1_, err1_, err2_, output_path, mag_ref_comp,
+              comp_mag_ref, comp_mag_max):
 
     from ga_sim import faker
 
-    faker(N_stars_cmd, frac_bin, IMF_author, x0, y0, rexp, ell_, pa, dist, hpx, param['cmin'], param['cmax'],
+    faker(MV, frac_bin, x0, y0, rexp, ell_, pa, mM, hpx, param['cmin'], param['cmax'],
           param['mmin'], param['mmax'], mag1_, err1_, err2_, param['file_iso'], output_path, mag_ref_comp,
           comp_mag_ref, comp_mag_max)
 
 fake_clus_path = param['results_path'] + '/fake_clus'
 
 for i in range(len(hp_sample_un)):
-    N_stars_cmd = int(mass[i] / mean_mass)
 
-    faker_app(N_stars_cmd, param['frac_bin'], param['IMF_author'], RA_pix[i], DEC_pix[i], r_exp[i], ell[i],
-              pa[i], dist[i], hp_sample_un[i], param, mag1_, err1_, err2_, fake_clus_path,
+    faker_app(MV, param['frac_bin'], RA_pix[i], DEC_pix[i], r_exp[i], ell[i],
+              pa[i], mM[i], hp_sample_un[i], param, mag1_, err1_, err2_, fake_clus_path,
               param['mag_ref_comp'], param['comp_mag_ref'], param['comp_mag_max'])
 
 ipix_ini = glob.glob(param['hpx_cats_path'] + '/*.fits')
