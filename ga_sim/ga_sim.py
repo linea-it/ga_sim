@@ -15,8 +15,57 @@ from astropy.io.fits import getdata
 from pathlib import Path
 from itertools import compress
 from scipy.optimize import curve_fit
-from scipy.stats import truncnorm, norm
+
+# from scipy.stats import truncnorm, norm
+from scipy.ndimage import gaussian_filter
 import logging
+
+
+def rd2d(x, y, xmin, xmax, ymin, ymax, x_steps, y_steps, n_random):
+    """This function returns a 2D random of point based on an informed distribution.
+
+    Parameters
+    ----------
+    x : list of float
+        List of points. First dimension.
+    y : list of float
+        List of points. Second dimension.
+    xmin : float
+        Minimum in first dimension.
+    xmax : float
+        Maximum in first dimension.
+    ymin : float
+        Minimum in second dimension.
+    ymax : float
+        Maximum in second dimension.
+    x_steps : int
+        Amount of steps in first dimension.
+    y_steps : int
+        Amount of steps in second dimension.
+    n_random : int
+        Amount of points in output.
+
+    Returns
+    -------
+    Array-like
+        First and second dimension of random points.
+    """
+    h, xedges, ydeges, img = plt.hist2d(
+        x, y, bins=[x_steps, y_steps], range=[[xmin, xmax], [ymin, ymax]], density=True
+    )
+    H = gaussian_filter(h.T, sigma=1)
+    H /= np.sum(H)
+    p = H.flatten()
+    n = np.random.choice(np.arange(len(p)), size=n_random, replace=True, p=p)
+    x_random = n % x_steps
+    y_random = n / y_steps
+    x_random *= xmax - xmin
+    y_random *= ymax - ymin
+    x_random = x_random / x_steps
+    y_random = y_random / y_steps
+    x_random += xmin
+    y_random += ymin
+    return x_random, y_random
 
 
 def gauss(x, mu, sigma, A):
@@ -52,54 +101,15 @@ def read_ref(param):
     return Mv, rhl_pc
 
 
-def mv_rhl_from_data(N_desired, param, Mv_min=-14.0, Mv_max=2):
+def mv_rhl_from_data(N_desired, param, rhl_pc_min, rhl_pc_max, Mv_min=-14.0, Mv_max=2):
     # Read data from real objects
     Mv, rhl_pc = read_ref(param)
+    
+    log10_rhl_pc = np.log10(rhl_pc))
 
-    # Fit gaussians
-    params_Mv, cov_Mv = fit_bimodal(Mv, (-8.0, 1.0, 25, -4.0, 2.0, 12), 20)
-    params_rhl, cov_rhl = fit_bimodal(rhl_pc, (0.7, 0.25, 50, 1.8, 0.5, 20), 100)
-
-    N1 = params_Mv[1] * params_Mv[2]
-    N2 = params_Mv[4] * params_Mv[5]
-    N1 = int(N_desired * (N1 / (N1 + N2)))
-    N2 = N_desired - N1
-
-    # print(N1, N2)
-
-    Mv1 = []
-    Mv2 = []
-
-    while len(Mv1) < N1:
-        m = np.random.normal(params_Mv[0], params_Mv[1], 1)
-        if (m > Mv_min) & (m < Mv_max):
-            Mv1.extend(m)
-
-    while len(Mv2) < N2:
-        m = np.random.normal(params_Mv[3], params_Mv[4], 1)
-        if (m > Mv_min) & (m < Mv_max):
-            Mv2.extend(m)
-
-    rhl1 = []
-    rhl2 = []
-
-    while len(Mv1) < N1:
-        m = np.random.normal(params_Mv[0], params_Mv[1], 1)
-        if (m > Mv_min) & (m < Mv_max):
-            Mv1.extend(m)
-
-    while len(Mv2) < N2:
-        m = np.random.normal(params_Mv[3], params_Mv[4], 1)
-        if (m > Mv_min) & (m < Mv_max):
-            Mv2.extend(m)
-
-    rhl1 = np.random.normal(params_rhl[0], params_rhl[1], N1)
-    rhl2 = np.random.normal(params_rhl[3], params_rhl[4], N2)
-
-    Mv_out = np.concatenate((Mv1, Mv2))
-    rhl_out = np.concatenate((rhl1, rhl2))
-
-    return Mv_out, rhl_out
+    X, Y = rd2d(Mv, log10_rhl_pc, Mv_min, Mv_max, np.log10(rhl_pc_min), np.log10(rhl_pc_max), 1000, 1000, N_desired)
+    
+    return X, Y
 
 
 def get_hpx_ftp_data(param):
@@ -978,19 +988,11 @@ def gen_clus_file(param):
         # angles based on limits required, and printing to file objects.dat.
         mM = mM_min + np.random.rand(len(hp_sample_un)) * (mM_max - mM_min)
         dist = 10 ** ((mM / 5) + 1)
-        r_exp = 10 ** (
-            log10_rexp_min
-            * (log10_rexp_max / log10_rexp_min) ** np.random.rand(len(hp_sample_un))
-        )
         if Mv_hlr_from_data:
-            Mv_prev, hlr_prev = mv_rhl_from_data(len(hp_sample_un), param)
-            mass = 10 ** (-0.2907 * (Mv_prev + mM) + 7.96)
-            r_exp = [(10 ** i) / 1.7 for i in hlr_prev]
+            MV, log10_hlr_prev = mv_rhl_from_data(len(hp_sample_un), param, 10 ** (log10_rexp_min), 10 ** (log10_rexp_max), Mv_min, Mv_max)
+            r_exp = [(10 ** i) / 1.7 for i in log10_hlr_prev]
         else:
-            mass = 10 ** (
-                log10_mass_min
-                * (log10_mass_max / log10_mass_min) ** np.random.rand(len(hp_sample_un))
-            )
+            MV = MV_min + np.random.rand(len(hp_sample_un)) * (MV_max - MV_min)
             r_exp = 10 ** (
                 log10_rexp_min
                 * (log10_rexp_max / log10_rexp_min) ** np.random.rand(len(hp_sample_un))
@@ -1010,12 +1012,12 @@ def gen_clus_file(param):
                     r_exp[i],
                     ell[i],
                     pa[i],
-                    mass[i],
+                    MV[i],
                     dist[i],
                 ),
                 file=obj_file,
             )
-    return RA_pix, DEC_pix, r_exp, ell, pa, dist, mass, mM, hp_sample_un
+    return RA_pix, DEC_pix, r_exp, ell, pa, dist, mM, hp_sample_un, MV
 
 
 def read_cat(
@@ -1215,16 +1217,20 @@ def download_iso(version, phot_system, Z, age, av_ext, IMF_author, out_file, ite
     file_is_empty = True
 
     # Selecting IMF:
-    if IMF_author = 'Kroupa': file_IMF = 'imf_kroupa_orig.dat'
-    if IMF_author = 'Salpeter': file_IMF = 'imf_salpeter.dat'
-    if IMF_author = 'Chabrier_exp': file_IMF = 'imf_chabrier_exponential.dat'
-    
+    if IMF_author == "Kroupa":
+        file_IMF = "imf_kroupa_orig.dat"
+    if IMF_author == "Salpeter":
+        file_IMF = "imf_salpeter.dat"
+    if IMF_author == "Chabrier_exp":
+        file_IMF = "imf_chabrier_exponential.dat"
+
     main_pars = (
         "track_parsec=parsec_CAF09_v1.2S&track_colibri=parsec_CAF09_v1.2S_S_LMC_08_web&track_postagb="
         +"no&n_inTPC=10&eta_reimers=0.2&kind_interp=1&kind_postagb=-1&kind_tpagb=-1&kind_pulsecycle="
         +"0&kind_postagb=-1&kind_mag=2&kind_dust=0&extinction_coeff=constant&extinction_curve="
         +"cardelli&kind_LPV=1&dust_sourceM=dpmod60alox40&dust_sourceC=AMCSIC15&imf_file=tab_imf/"
-        +file_IMF+"&output_kind=0&output_evstage=1&output_gzip=0"
+        +file_IMF
+        +"&output_kind=0&output_evstage=1&output_gzip=0"
     )
     webserver = "http://stev.oapd.inaf.it"
     if phot_system == "des":
@@ -1453,12 +1459,11 @@ def faker_bin(total_bin, file_in, mM, mmax):
         a list of magnitudes of the binaries in the second band
     """
 
-    mass, int_IMF, mag1, mag2 = np.loadtxt(
-        file_in, usecols=(3, 4, 29, 30), unpack=True)
-    
+    mass, int_IMF, mag1, mag2 = np.loadtxt(file_in, usecols=(3, 4, 29, 30), unpack=True)
+
     mag1 += mM
     mag2 += mM
-    
+
     cond = mag1 <= mmax + 0.5
     mass, mag1, mag2, int_IMF = mass[cond], mag1[cond], mag2[cond], int_IMF[cond]
 
@@ -1466,21 +1471,21 @@ def faker_bin(total_bin, file_in, mM, mmax):
     mag1 = np.concatenate((mag1, ([mag1[-1]])))
     mag2 = np.concatenate((mag2, ([mag2[-1]])))
     int_IMF = np.concatenate((int_IMF, ([int_IMF[-1]])))
-    
+
     n_stars = [j - i for i, j in zip(int_IMF[0:-1], int_IMF[1::])]
     n_stars.append(int_IMF[-2] - int_IMF[-1])
     n_stars /= mass
     n_stars /= np.sum(n_stars)
-    
+
     idx_n_stars_int = []
 
     count = 0
 
-    while (count < total_bin):
+    while count < total_bin:
         idx = np.random.choice(len(mass), 1, p=n_stars)[0]
         idx_n_stars_int.append(idx)
         count = len(idx)
-    
+
     n_stars_int = np.bincount(idx_n_stars_int)
 
     binaries = np.zeros((total_bin, 2))
@@ -1489,13 +1494,15 @@ def faker_bin(total_bin, file_in, mM, mmax):
     for i, j in enumerate(n_stars_int):
         if j > 0:
             intervalo = np.random.rand(j)
-            binaries[count:count + j, 0] = mag1[i] - \
-                (mag1[i] - mag1[i + 1]) * intervalo
-            binaries[count:count + j, 1] = mag2[i] - \
-                (mag2[i] - mag2[i + 1]) * intervalo
+            binaries[count: count + j, 0] = (
+                mag1[i] - (mag1[i] - mag1[i + 1]) * intervalo
+            )
+            binaries[count: count + j, 1] = (
+                mag2[i] - (mag2[i] - mag2[i + 1]) * intervalo
+            )
             count += j
 
-    '''
+    """
     for i in range(total_bin):
         for k in range(len(mass) - 1):  # abre as linhas do arquivo em massa
             # se a massa estiver no intervalo das linhas
@@ -1507,7 +1514,7 @@ def faker_bin(total_bin, file_in, mM, mmax):
                 binaries[i, 0] = mag1[k] - (mag1[k] - mag1[k + 1]) * intervalo
                 binaries[i, 1] = mag2[k] - (mag2[k] - mag2[k + 1]) * intervalo
                 binaries[i, 2] = massa_calculada[i]
-    '''
+    """
     return binaries[:, 0], binaries[:, 1]
 
 
@@ -1653,14 +1660,14 @@ def faker(
     n_stars.append(int_IMF[-2] - int_IMF[-1])
     n_stars /= mass
     n_stars /= np.sum(n_stars)
-    
+
     idx_n_stars_int = []
     flux_tot_account = []
-    
-    while (-2.5 * np.log10(np.sum(flux_tot_account)) > MV + mM):
+
+    while -2.5 * np.log10(np.sum(flux_tot_account)) > MV + mM:
         idx = np.random.choice(len(mass), 1, p=n_stars)[0]
         idx_n_stars_int.append(idx)
-        flux_tot_account.append(10. ** (-0.4 * mag1[idx]))
+        flux_tot_account.append(10.0 ** (-0.4 * mag1[idx]))
 
     n_stars_int = np.bincount(idx_n_stars_int)
     total_stars_int = np.sum(n_stars_int)
@@ -1671,22 +1678,18 @@ def faker(
     for i, j in enumerate(n_stars_int):
         if j > 0:
             intervalo = np.random.rand(j)
-            star[count:count + j, 2] = mag1[i] - \
-                (mag1[i] - mag1[i + 1]) * intervalo
-            star[count:count + j, 5] = mag2[i] - \
-                (mag2[i] - mag2[i + 1]) * intervalo
-            star[count:count + j, 8] = mass[i] - \
-                (mass[i] - mass[i + 1]) * intervalo
+            star[count: count + j, 2] = mag1[i] - (mag1[i] - mag1[i + 1]) * intervalo
+            star[count: count + j, 5] = mag2[i] - (mag2[i] - mag2[i + 1]) * intervalo
+            star[count: count + j, 8] = mass[i] - (mass[i] - mass[i + 1]) * intervalo
             count += j
 
     for i in range(total_stars_int):
-        print('init_stars', *star[i,:])
+        print("init_stars", *star[i,:])
 
     # apply binarity
     # definition of binarity: fb = N_stars_in_binaries / N_total
     N_stars_bin = int(total_stars_int / ((2.0 / frac_bin) - 1))
-    mag1_bin, mag2_bin = faker_bin(
-        N_stars_bin, file_iso, mM, mmax)
+    mag1_bin, mag2_bin = faker_bin(N_stars_bin, file_iso, mM, mmax)
 
     j = np.random.randint(total_stars_int, size=N_stars_bin)
     k = np.random.randint(N_stars_bin, size=N_stars_bin)
@@ -1717,9 +1720,9 @@ def faker(
     )
     p_values[star[:, 2] > mmax] = 1.0e-9  # virtually zero
     p_values[star[:, 2] < mag_ref_comp] = 1.0
-    
+
     star_comp = np.random.choice(
-    len(star[:, 0]), total_stars_int, replace=True, p=p_values / np.sum(p_values)
+        len(star[:, 0]), total_stars_int, replace=True, p=p_values / np.sum(p_values)
     )
 
     rexp_deg = (180 / np.pi) * np.arctan(rexp / dist)

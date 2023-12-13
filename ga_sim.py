@@ -57,7 +57,7 @@ os.makedirs(param['hpx_cats_filt_path'], exist_ok=True)
 # Downloading isochrone and printing some information
 download_iso(param['padova_version_code'], param['survey'], 0.0152 * (10 ** param['MH_simulation']),
              param['age_simulation'], param['av_simulation'], param["IMF_author"], param['file_iso'], 5)
-
+exit()
 iso_info = np.loadtxt(param['file_iso'], usecols=(1, 2, 3, 26), unpack=True)
 FeH_iso, logAge_iso, m_ini_iso, g_iso = iso_info[0][0], iso_info[1][0], iso_info[2], iso_info[3]
 
@@ -134,7 +134,7 @@ outputs = [r.result() for r in res2]
 # Generating features of simulated clusters
 print('Now generating cluster file.')
 
-RA_pix, DEC_pix, r_exp, ell, pa, dist, mass, mM, hp_sample_un = gen_clus_file(
+RA_pix, DEC_pix, MV, r_exp, ell, pa, dist, mM, hp_sample_un, MV = gen_clus_file(
     param)
 
 # Loading photometric errors

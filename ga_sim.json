@@ -25,6 +25,8 @@
     "padova_version_code": "3.6",
     "mM_min": 10.00,
     "mM_max": 20.00,
+    "Mv_min": -14.00,
+    "Mv_max": 2.00,
     "log10_rexp_min": 0.5,
     "log10_rexp_max": 3.1,
     "frac_bin": 0.2,
