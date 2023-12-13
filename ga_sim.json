@@ -1,5 +1,5 @@
 {
-    "executor": "linea",
+    "executor": "local",
     "nside_ini": 64,
     "nside_ftp": 4096,
     "nside3": 262144,

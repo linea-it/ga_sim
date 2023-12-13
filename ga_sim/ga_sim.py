@@ -5,8 +5,7 @@ import astropy.io.fits as fits
 import healpy as hp
 import matplotlib.path as mpath
 import numpy as np
-
-# import sqlalchemy
+import matplotlib.pyplot as plt
 import glob
 from astropy.table import Table
 from astropy import units as u
@@ -68,21 +67,6 @@ def rd2d(x, y, xmin, xmax, ymin, ymax, x_steps, y_steps, n_random):
     return x_random, y_random
 
 
-def gauss(x, mu, sigma, A):
-    return A * np.exp(-((x - mu) ** 2) / 2 / sigma ** 2)
-
-
-def bimodal(x, mu1, sigma1, A1, mu2, sigma2, A2):
-    return gauss(x, mu1, sigma1, A1) + gauss(x, mu2, sigma2, A2)
-
-
-def fit_bimodal(data, kick, n):
-    y, x = np.histogram(data, n)
-    x = (x[1:] + x[:-1]) / 2  # for len(x)==len(y)
-    params, cov = curve_fit(bimodal, x, y, kick)
-    return params, cov
-
-
 def read_ref(param):
     Mv, rhl_pc = np.loadtxt(param["cat_dg"], usecols=(8, 10), unpack=True)
 
@@ -105,7 +89,7 @@ def mv_rhl_from_data(N_desired, param, rhl_pc_min, rhl_pc_max, Mv_min=-14.0, Mv_
     # Read data from real objects
     Mv, rhl_pc = read_ref(param)
     
-    log10_rhl_pc = np.log10(rhl_pc))
+    log10_rhl_pc = np.log10(rhl_pc)
 
     X, Y = rd2d(Mv, log10_rhl_pc, Mv_min, Mv_max, np.log10(rhl_pc_min), np.log10(rhl_pc_max), 1000, 1000, N_desired)
     
@@ -1239,6 +1223,18 @@ def download_iso(version, phot_system, Z, age, av_ext, IMF_author, out_file, ite
     while (file_is_empty) & (count < iter_max):
         print("Iteration {:d} to download PARSEC isochrone.".format(count + 1))
         try:
+            print("wget -o lixo -Otmp --post-data='submit_form=Submit&cmd_version={}&photsys_file=tab_mag_odfnew/tab_mag_{}.dat&photsys_version=YBC&output_kind=0&output_evstage=1&isoc_isagelog=0&isoc_agelow={:.2e}&isoc_ageupp={:.2e}&isod_dage=0&isoc_ismetlog=0&isoc_zlow={:.6f}&isoc_zupp={:.6f}&isod_dz=0&extinction_av={:.3f}&{}' {}/cgi-bin/cmd_{}".format(
+                        version,
+                        phot_system,
+                        age,
+                        age,
+                        Z,
+                        Z,
+                        av_ext,
+                        main_pars,
+                        webserver,
+                        version,
+            ))
             os.system(
                 (
                     "wget -o lixo -Otmp --post-data='submit_form=Submit&cmd_version={}&photsys_file=tab_mag_odfnew/tab_mag_{}.dat&photsys_version=YBC&output_kind=0&output_evstage=1&isoc_isagelog=0&isoc_agelow={:.2e}&isoc_ageupp={:.2e}&isod_dage=0&isoc_ismetlog=0&isoc_zlow={:.6f}&isoc_zupp={:.6f}&isod_dz=0&extinction_av={:.3f}&{}' {}/cgi-bin/cmd_{}".format(
@@ -1257,8 +1253,8 @@ def download_iso(version, phot_system, Z, age, av_ext, IMF_author, out_file, ite
             )
         except:
             print("No communication with {}".format(webserver))
-        with open("tmp") as f:
-            aaa = f.readlines()
+        with open("tmp") as ff:
+            aaa = ff.readlines()
             for i, j in enumerate(aaa):
                 if "/output" in j:
                     out_file_tmp = (
@@ -1434,7 +1430,7 @@ def apply_err(mag, mag_table, err_table):
     return np.add(err_interp, np.multiply(0.02, np.random.randn(len(err_interp))))
 
 
-def faker_bin(total_bin, file_in, mM, mmax):
+def faker_bin(total_bin, IMF_author, file_in, dist, mmax):
     """Calculates the fraction of binaries in the simulated clusters.
 
     Parameters
@@ -1458,8 +1454,14 @@ def faker_bin(total_bin, file_in, mM, mmax):
     binaries[:,1]
         a list of magnitudes of the binaries in the second band
     """
+    f = open(file_in, "r")
+    cols = f.readlines()
+    cols = cols[11].split()
+    cols.pop(0)
+    n_col_magg = cols.index('gmag')
+    n_col_magr = cols.index('rmag')
 
-    mass, int_IMF, mag1, mag2 = np.loadtxt(file_in, usecols=(3, 4, 29, 30), unpack=True)
+    mass, int_IMF, mag1, mag2 = np.loadtxt(file_in, usecols=(3, 4, n_col_magg, n_col_magr), unpack=True)
 
     mag1 += mM
     mag2 += mM
@@ -1467,42 +1469,50 @@ def faker_bin(total_bin, file_in, mM, mmax):
     cond = mag1 <= mmax + 0.5
     mass, mag1, mag2, int_IMF = mass[cond], mag1[cond], mag2[cond], int_IMF[cond]
 
-    mass = np.concatenate((mass, ([mass[-1]])))
-    mag1 = np.concatenate((mag1, ([mag1[-1]])))
-    mag2 = np.concatenate((mag2, ([mag2[-1]])))
-    int_IMF = np.concatenate((int_IMF, ([int_IMF[-1]])))
+    # bin in mass (solar masses)
+    binmass = 5.0e-4
 
-    n_stars = [j - i for i, j in zip(int_IMF[0:-1], int_IMF[1::])]
-    n_stars.append(int_IMF[-2] - int_IMF[-1])
-    n_stars /= mass
-    n_stars /= np.sum(n_stars)
+    mag1 += 5 * np.log10(dist) - 5
+    mag2 += 5 * np.log10(dist) - 5
 
-    idx_n_stars_int = []
+    IMF = IMF_(IMF_author)
+
+    # amostra is an array with the amount of stars in each bin of mass. ex.: [2,3,4,1,2]
+    massmin = np.min(mass)
+    massmax = np.max(mass)
+    bins_mass = int((massmax - massmin) / binmass)
+    amostra = np.zeros(bins_mass)
+
+    for i in range(bins_mass):
+        if (i * binmass) + massmin <= IMF["IMF_mass_break"]:
+            amostra[i] = round((massmin + i * binmass) ** (IMF["IMF_alpha_1"]))
+        else:
+            amostra[i] = round((massmin + i * binmass) ** (IMF["IMF_alpha_2"]))
+    # Soma is the total amount of stars (float), the sum of amostra
+    soma = np.sum(amostra)
+    # Now normalizing the array amostra
+    # for idx, num in enumerate(amostra):
+    amostra = np.multiply(amostra, total_bin / soma)
+
+    massa_calculada = np.zeros(int(total_bin))
 
     count = 0
 
-    while count < total_bin:
-        idx = np.random.choice(len(mass), 1, p=n_stars)[0]
-        idx_n_stars_int.append(idx)
-        count = len(idx)
+    for j in range(bins_mass):  # todos os intervalos primarios de massa
+        for k in range(
+            int(amostra[j])
+        ):  
+            if amostra[j] != 0:
+            # amostra() eh a amostra de estrelas dentro do intervalo de massa
+                massa_calculada[count] = (
+                    massmin + (j * binmass) + (k * binmass / amostra[j])
+                )
+                # massa calculada eh a massa de cada estrela
+                count += 1
 
-    n_stars_int = np.bincount(idx_n_stars_int)
+    # mag1 mag1err unc1 mag2 mag2err unc2
+    binaries = np.zeros((total_bin, 3))
 
-    binaries = np.zeros((total_bin, 2))
-
-    count = 0
-    for i, j in enumerate(n_stars_int):
-        if j > 0:
-            intervalo = np.random.rand(j)
-            binaries[count: count + j, 0] = (
-                mag1[i] - (mag1[i] - mag1[i + 1]) * intervalo
-            )
-            binaries[count: count + j, 1] = (
-                mag2[i] - (mag2[i] - mag2[i + 1]) * intervalo
-            )
-            count += j
-
-    """
     for i in range(total_bin):
         for k in range(len(mass) - 1):  # abre as linhas do arquivo em massa
             # se a massa estiver no intervalo das linhas
@@ -1514,8 +1524,7 @@ def faker_bin(total_bin, file_in, mM, mmax):
                 binaries[i, 0] = mag1[k] - (mag1[k] - mag1[k + 1]) * intervalo
                 binaries[i, 1] = mag2[k] - (mag2[k] - mag2[k + 1]) * intervalo
                 binaries[i, 2] = massa_calculada[i]
-    """
-    return binaries[:, 0], binaries[:, 1]
+    return binaries[:, 0], binaries[:, 1], binaries[:, 2]
 
 
 def unc(mag, mag_table, err_table):
@@ -1637,9 +1646,14 @@ def faker(
     # Cria o diretório de output se não existir
     os.system("mkdir -p " + output_path)
 
-    mass, int_IMF, mag1, mag2 = np.loadtxt(
-        file_iso, usecols=(3, 4, 26, 27), unpack=True
-    )
+    f = open(file_in, "r")
+    cols = f.readlines()
+    cols = cols[11].split()
+    cols.pop(0)
+    n_col_magg = cols.index('gmag')
+    n_col_magr = cols.index('rmag')
+
+    mass, int_IMF, mag1, mag2 = np.loadtxt(file_in, usecols=(3, 4, n_col_magg, n_col_magr), unpack=True)
 
     mag1 += mM
     mag2 += mM
@@ -1689,7 +1703,7 @@ def faker(
     # apply binarity
     # definition of binarity: fb = N_stars_in_binaries / N_total
     N_stars_bin = int(total_stars_int / ((2.0 / frac_bin) - 1))
-    mag1_bin, mag2_bin = faker_bin(N_stars_bin, file_iso, mM, mmax)
+    mag1_bin, mag2_bin = faker_bin(N_stars_bin, IMF_author, file_iso, dist, mmax)
 
     j = np.random.randint(total_stars_int, size=N_stars_bin)
     k = np.random.randint(N_stars_bin, size=N_stars_bin)

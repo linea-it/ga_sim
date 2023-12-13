@@ -57,12 +57,11 @@ os.makedirs(param['hpx_cats_filt_path'], exist_ok=True)
 # Downloading isochrone and printing some information
 download_iso(param['padova_version_code'], param['survey'], 0.0152 * (10 ** param['MH_simulation']),
              param['age_simulation'], param['av_simulation'], param["IMF_author"], param['file_iso'], 5)
-exit()
+
 iso_info = np.loadtxt(param['file_iso'], usecols=(1, 2, 3, 26), unpack=True)
 FeH_iso, logAge_iso, m_ini_iso, g_iso = iso_info[0][0], iso_info[1][0], iso_info[2], iso_info[3]
 
 print('[Fe/H]={:.2f}, Age={:.2f} Gyr'.format(FeH_iso, 10**(logAge_iso-9)))
-
 mM_mean = (param['mM_max'] + param['mM_min']) / 2.
 print(np.max(m_ini_iso[g_iso + mM_mean < param['mmax']]))
 mean_mass = (np.min(m_ini_iso[g_iso + mM_mean < param['mmax']]) +
