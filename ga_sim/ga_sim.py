@@ -1427,7 +1427,8 @@ def apply_err(mag, mag_table, err_table):
     """
 
     err_interp = np.interp(mag, mag_table, err_table)
-    return np.add(err_interp, np.multiply(0.02, np.random.randn(len(err_interp))))
+    # return np.add(err_interp, np.multiply(0.02, np.random.randn(len(err_interp))))
+    return np.multiply(err_interp, np.random.randn(len(err_interp)))
 
 
 def faker_bin(total_bin, IMF_author, file_in, dist, mmax):
