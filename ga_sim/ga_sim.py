@@ -58,8 +58,8 @@ def rd2d(x, y, xmin, xmax, ymin, ymax, x_steps, y_steps, n_random):
     n = np.random.choice(np.arange(len(p)), size=n_random, replace=True, p=p)
     x_random = n % x_steps
     y_random = n / y_steps
-    x_random *= xmax - xmin
-    y_random *= ymax - ymin
+    x_random = x_random * (xmax - xmin)
+    y_random = y_random * (ymax - ymin)
     x_random = x_random / x_steps
     y_random = y_random / y_steps
     x_random += xmin
@@ -85,8 +85,13 @@ def read_ref(param):
     return Mv, rhl_pc
 
 
-def mv_rhl_from_data(N_desired, param, rhl_pc_min, rhl_pc_max, Mv_min=-14.0, Mv_max=2):
-    # Read data from real objects
+def mv_hlr_from_data(N_desired, param, Mv_min=-14.0, Mv_max=2):
+
+    globals().update(param)
+
+    rhl_pc_min = 10.**(1.7*log10_rexp_min)
+    rhl_pc_max = 10.**(1.7*log10_rexp_max)
+
     Mv, rhl_pc = read_ref(param)
     
     log10_rhl_pc = np.log10(rhl_pc)
@@ -897,7 +902,7 @@ def clus_file_results(out_file, sim_clus_feat, objects_filepath):
     star_clusters_simulated = Path(out_file)
     with open(star_clusters_simulated, "w") as fff:
         print(
-            "#0-HPX64 1-N 2-MV 3-SNR 4-N_f 5-MV_f 6-SNR_f 7-L 8-B 9-ra 10-dec 11-r_exp 12-ell 13-pa 14-mass 15-dist",
+            "#0-HPX64 1-N 2-MV 3-SNR 4-N_f 5-MV_f 6-SNR_f 7-L 8-B 9-ra 10-dec 11-r_exp 12-ell 13-pa 14-MV 15-dist",
             file=fff,
         )
     os.system(
@@ -972,15 +977,21 @@ def gen_clus_file(param):
         # angles based on limits required, and printing to file objects.dat.
         mM = mM_min + np.random.rand(len(hp_sample_un)) * (mM_max - mM_min)
         dist = 10 ** ((mM / 5) + 1)
+        r_exp = 10 ** (
+	    log10_rexp_min
+	    * (log10_rexp_max / log10_rexp_min) ** np.random.rand(len(hp_sample_un))
+	)
+
         if Mv_hlr_from_data:
-            MV, log10_hlr_prev = mv_rhl_from_data(len(hp_sample_un), param, 10 ** (log10_rexp_min), 10 ** (log10_rexp_max), Mv_min, Mv_max)
-            r_exp = [(10 ** i) / 1.7 for i in log10_hlr_prev]
+            MV, hlr_prev = mv_hlr_from_data(len(hp_sample_un), param)
+            # mass = 10 ** (-0.2907 * (Mv_prev + mM) + 7.96)
+            r_exp = [(10 ** i) / 1.7 for i in hlr_prev]
         else:
-            MV = MV_min + np.random.rand(len(hp_sample_un)) * (MV_max - MV_min)
-            r_exp = 10 ** (
-                log10_rexp_min
-                * (log10_rexp_max / log10_rexp_min) ** np.random.rand(len(hp_sample_un))
-            )
+            # mass = 10**(log10_mass_min * (log10_mass_max / log10_mass_min)
+            #            ** np.random.rand(len(hp_sample_un)))
+            r_exp = 10**(log10_rexp_min * (log10_rexp_max / log10_rexp_min)
+	                ** np.random.rand(len(hp_sample_un)))
+            MV = Mv_min + (Mv_max - Mv_min) * np.random.rand(len(hp_sample_un))
 
         ell = ell_min + np.random.rand(len(hp_sample_un)) * (ell_max - ell_min)
         pa = pa_min + np.random.rand(len(hp_sample_un)) * (pa_max - pa_min)
@@ -1431,7 +1442,7 @@ def apply_err(mag, mag_table, err_table):
     return np.multiply(err_interp, np.random.randn(len(err_interp)))
 
 
-def faker_bin(total_bin, IMF_author, file_in, dist, mmax):
+def faker_bin(total_bin, file_in, mM, mmax):
     """Calculates the fraction of binaries in the simulated clusters.
 
     Parameters
@@ -1464,8 +1475,8 @@ def faker_bin(total_bin, IMF_author, file_in, dist, mmax):
 
     mass, int_IMF, mag1, mag2 = np.loadtxt(file_in, usecols=(3, 4, n_col_magg, n_col_magr), unpack=True)
 
-    mag1 += mM
-    mag2 += mM
+    mag1 += mM #5 * np.log10(dist) - 5
+    mag2 += mM #5 * np.log10(dist) - 5
 
     cond = mag1 <= mmax + 0.5
     mass, mag1, mag2, int_IMF = mass[cond], mag1[cond], mag2[cond], int_IMF[cond]
@@ -1473,10 +1484,7 @@ def faker_bin(total_bin, IMF_author, file_in, dist, mmax):
     # bin in mass (solar masses)
     binmass = 5.0e-4
 
-    mag1 += 5 * np.log10(dist) - 5
-    mag2 += 5 * np.log10(dist) - 5
-
-    IMF = IMF_(IMF_author)
+    IMF = IMF_('Kroupa')
 
     # amostra is an array with the amount of stars in each bin of mass. ex.: [2,3,4,1,2]
     massmin = np.min(mass)
@@ -1525,7 +1533,7 @@ def faker_bin(total_bin, IMF_author, file_in, dist, mmax):
                 binaries[i, 0] = mag1[k] - (mag1[k] - mag1[k + 1]) * intervalo
                 binaries[i, 1] = mag2[k] - (mag2[k] - mag2[k + 1]) * intervalo
                 binaries[i, 2] = massa_calculada[i]
-    return binaries[:, 0], binaries[:, 1], binaries[:, 2]
+    return binaries[:, 0], binaries[:, 1]
 
 
 def unc(mag, mag_table, err_table):
@@ -1554,7 +1562,6 @@ def unc(mag, mag_table, err_table):
 def faker(
     MV,
     frac_bin,
-    IMF_author,
     x0,
     y0,
     rexp,
@@ -1647,14 +1654,14 @@ def faker(
     # Cria o diretório de output se não existir
     os.system("mkdir -p " + output_path)
 
-    f = open(file_in, "r")
+    f = open(file_iso, "r")
     cols = f.readlines()
     cols = cols[11].split()
     cols.pop(0)
     n_col_magg = cols.index('gmag')
     n_col_magr = cols.index('rmag')
 
-    mass, int_IMF, mag1, mag2 = np.loadtxt(file_in, usecols=(3, 4, n_col_magg, n_col_magr), unpack=True)
+    mass, int_IMF, mag1, mag2 = np.loadtxt(file_iso, usecols=(3, 4, n_col_magg, n_col_magr), unpack=True)
 
     mag1 += mM
     mag2 += mM
@@ -1704,7 +1711,7 @@ def faker(
     # apply binarity
     # definition of binarity: fb = N_stars_in_binaries / N_total
     N_stars_bin = int(total_stars_int / ((2.0 / frac_bin) - 1))
-    mag1_bin, mag2_bin = faker_bin(N_stars_bin, IMF_author, file_iso, dist, mmax)
+    mag1_bin, mag2_bin = faker_bin(N_stars_bin, file_iso, mM, mmax)
 
     j = np.random.randint(total_stars_int, size=N_stars_bin)
     k = np.random.randint(N_stars_bin, size=N_stars_bin)

@@ -132,8 +132,7 @@ outputs = [r.result() for r in res2]
 
 # Generating features of simulated clusters
 print('Now generating cluster file.')
-
-RA_pix, DEC_pix, MV, r_exp, ell, pa, dist, mM, hp_sample_un, MV = gen_clus_file(
+RA_pix, DEC_pix, r_exp, ell, pa, dist, mM, hp_sample_un, MV = gen_clus_file(
     param)
 
 # Loading photometric errors
@@ -143,7 +142,7 @@ mag1_, err1_, err2_ = read_error(param['file_error'] + '/' + param['survey'] + '
 print('Ready to simulate clusters.')
 
 @python_app
-def faker_app(MV, frac_bin, x0, y0, rexp, ell_, pa, dist, hpx, param, mag1_, err1_, err2_, output_path, mag_ref_comp,
+def faker_app(MV, frac_bin, x0, y0, rexp, ell_, pa, mM, hpx, param, mag1_, err1_, err2_, output_path, mag_ref_comp,
               comp_mag_ref, comp_mag_max):
 
     from ga_sim import faker
@@ -156,7 +155,7 @@ fake_clus_path = param['results_path'] + '/fake_clus'
 
 for i in range(len(hp_sample_un)):
 
-    faker_app(MV, param['frac_bin'], RA_pix[i], DEC_pix[i], r_exp[i], ell[i],
+    faker_app(MV[i], param['frac_bin'], RA_pix[i], DEC_pix[i], r_exp[i], ell[i],
               pa[i], mM[i], hp_sample_un[i], param, mag1_, err1_, err2_, fake_clus_path,
               param['mag_ref_comp'], param['comp_mag_ref'], param['comp_mag_max'])
 
