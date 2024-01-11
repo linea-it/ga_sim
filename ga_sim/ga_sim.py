@@ -78,7 +78,7 @@ def read_ref(param):
 
     rhl_pc_GC = (rhl_arcmin_GC / (57.3 * 60)) * dist_GC
 
-    rhl_pc = np.log10(np.concatenate((rhl_pc, rhl_pc_GC)))
+    rhl_pc = np.concatenate((rhl_pc, rhl_pc_GC))
 
     Mv = np.concatenate((Mv, Mv_GC))
 
@@ -89,8 +89,8 @@ def mv_hlr_from_data(N_desired, param, Mv_min=-14.0, Mv_max=2):
 
     globals().update(param)
 
-    rhl_pc_min = 10.**(1.7*log10_rexp_min)
-    rhl_pc_max = 10.**(1.7*log10_rexp_max)
+    rhl_pc_min = 10.**(1.7 * log10_rexp_min)
+    rhl_pc_max = 10.**(1.7 * log10_rexp_max)
 
     Mv, rhl_pc = read_ref(param)
     
@@ -983,7 +983,7 @@ def gen_clus_file(param):
 	)
 
         if Mv_hlr_from_data:
-            MV, hlr_prev = mv_hlr_from_data(len(hp_sample_un), param)
+            MV, hlr_prev = mv_hlr_from_data(len(hp_sample_un), param, Mv_min, Mv_max)
             # mass = 10 ** (-0.2907 * (Mv_prev + mM) + 7.96)
             r_exp = [(10 ** i) / 1.7 for i in hlr_prev]
         else:
@@ -1603,7 +1603,7 @@ def faker(
     Parameters
     ----------
     MV : float
-        Magnitude of the simulated cluster.
+        Absolute magnitude of the simulated cluster.
     frac_bin : float (0-1)
         Fraction of binaries. This is the total amount of stars in the CMD that belongs to a
         binary system (= 2 * N_stars_bin / total amount of stars).
