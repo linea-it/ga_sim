@@ -1705,8 +1705,8 @@ def faker(
             star[count: count + j, 8] = mass[i] - (mass[i] - mass[i + 1]) * intervalo
             count += j
 
-    for i in range(total_stars_int):
-        print("init_stars", *star[i,:])
+    #for i in range(total_stars_int):
+    #    print("init_stars", *star[i,:])
 
     # apply binarity
     # definition of binarity: fb = N_stars_in_binaries / N_total
@@ -1767,8 +1767,10 @@ def faker(
     filename = "%s_clus.dat" % str(hpx)
     filepath = Path(output_path, filename)
 
+    flux_final_account = [1.e-300]
     with open(filepath, "w") as out_file:
-        for ii in star_comp:  # range(len(star[:,0])):
+        while -2.5 * np.log10(np.sum(flux_final_account)) > MV + mM:
+            ii = 0
             cor = star[ii, 2] + star[ii, 3] - (star[ii, 5] + star[ii, 6])
             mmag = star[ii, 2] + star[ii, 3]
             if (mmag < mmax) & (mmag > mmin) & (cor >= cmin) & (cor <= cmax):
@@ -1784,6 +1786,8 @@ def faker(
                     star[ii, 8],
                     file=out_file,
                 )
+                flux_final_account.append(10.0 ** (-0.4 * (star[ii, 2] + star[ii, 3])))
+            ii += 1
     out_file.close()
 
 

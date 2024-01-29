@@ -23,6 +23,7 @@ import sys
 import healpy as hp
 import cProfile, pstats
 from ga_sim.parsl_config import get_config
+import logging
 
 profiler = cProfile.Profile()
 profiler.enable()
@@ -30,6 +31,14 @@ profiler.enable()
 parsl.clear()
 #parsl_config = get_config(ga_sim_config["executor"])
 #parsl.set_stream_logger()
+
+logname = '/lustre/t1/cl/lsst/gawa_project/adriano.pieres/ga_sim/ga_sim.log'
+logging.basicConfig(filename=logname,
+                    filemode='a',
+                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                    datefmt='%H:%M:%S')
+
+logging.warning('Packages were imported and parsl configuration was loaded.')
 
 confg = "ga_sim.json"
 
@@ -54,25 +63,30 @@ os.makedirs(param['hpx_cats_path'], exist_ok=True)
 os.makedirs(param['hpx_cats_clean_path'], exist_ok=True)
 os.makedirs(param['hpx_cats_filt_path'], exist_ok=True)
 
+logging.warning('Folders were created and download of isochrone will start.')
+
 # Downloading isochrone and printing some information
 download_iso(param['padova_version_code'], param['survey'], 0.0152 * (10 ** param['MH_simulation']),
              param['age_simulation'], param['av_simulation'], param["IMF_author"], param['file_iso'], 5)
+
+logging.warning('Isochrone was downloaded.')
 
 iso_info = np.loadtxt(param['file_iso'], usecols=(1, 2, 3, 26), unpack=True)
 FeH_iso, logAge_iso, m_ini_iso, g_iso = iso_info[0][0], iso_info[1][0], iso_info[2], iso_info[3]
 
 print('[Fe/H]={:.2f}, Age={:.2f} Gyr'.format(FeH_iso, 10**(logAge_iso-9)))
 mM_mean = (param['mM_max'] + param['mM_min']) / 2.
-print(np.max(m_ini_iso[g_iso + mM_mean < param['mmax']]))
-mean_mass = (np.min(m_ini_iso[g_iso + mM_mean < param['mmax']]) +
-             np.max(m_ini_iso[g_iso + mM_mean < param['mmax']])) / 2.
 
-print('Mean mass (M_sun): {:.2f}'.format(mean_mass))
+logging.warning('Starting to create footprint.')
 
 # Making footprint
 make_footprint(param)
 
+logging.warning('Footprint was created.')
+
 area_sampled = estimation_area(param)
+
+logging.warning('Starting to select pixels for simulations.')
 
 # Selecting input files and filtering by magnitude and color ranges and
 # correcting for extinction
@@ -94,6 +108,8 @@ for i in ipix_files:
     res.append(filter_ipix_stars_app(i, param))
 
 outputs = [r.result() for r in res]
+
+logging.warning('Pixels to be simulated was selected.')
 
 print('Total of {:d} pixels read and filtered.'.format(int(np.sum(outputs))))
 
@@ -118,6 +134,10 @@ for ii in files_DP0_ftp:
 
 ipix_ftp = [i.split('/')[-1] for i in files_ftp]
 
+logging.warning('Pixels with good amount of field stars in survey was selected.')
+
+logging.warning('Sampling pixels with field stars in survey.')
+
 @python_app
 def sample_ipix_cat_app(i, good_DP0_ftp, param):
     from ga_sim import sample_ipix_cat
@@ -130,16 +150,13 @@ for i in files_ftp:
 
 outputs = [r.result() for r in res2]
 
-# Generating features of simulated clusters
-print('Now generating cluster file.')
+logging.warning('Field stars in pixels was created. Now start to generate cluster files.')
+
 RA_pix, DEC_pix, r_exp, ell, pa, dist, mM, hp_sample_un, MV = gen_clus_file(
     param)
 
 # Loading photometric errors
 mag1_, err1_, err2_ = read_error(param['file_error'] + '/' + param['survey'] + '/errors.dat', 0.000, 0.000)
-
-# Simulating stellar clusters.
-print('Ready to simulate clusters.')
 
 @python_app
 def faker_app(MV, frac_bin, x0, y0, rexp, ell_, pa, mM, hpx, param, mag1_, err1_, err2_, output_path, mag_ref_comp,
@@ -159,6 +176,8 @@ for i in range(len(hp_sample_un)):
               pa[i], mM[i], hp_sample_un[i], param, mag1_, err1_, err2_, fake_clus_path,
               param['mag_ref_comp'], param['comp_mag_ref'], param['comp_mag_max'])
 
+logging.warning('Simulated cluster files were created. Now start to join simulated clusters and field stars.')
+
 ipix_ini = glob.glob(param['hpx_cats_path'] + '/*.fits')
 
 results_join = []
@@ -172,13 +191,12 @@ def join_sim_field_stars_app(ipix, param):
 
     return aaaa
 
-
-print('Now starting to join simulations and field stars.')
-
 for i in ipix_ini:
     results_join.append(join_sim_field_stars_app(i, param))
 
 outputs = [r.result() for r in results_join]
+
+logging.warning('Simulated clusters and field stars were joined in a single file. Starting to clear files from crowding')
 
 print('Total of {:d} pixels were joint from clusters and fields.'.format(
     int(np.sum(outputs))))
@@ -204,6 +222,8 @@ for aa in ipix_cats:
 
 outputs = [r.result() for r in results_from_clear]
 
+logging.warning('Joint cluster and field stars were cleared from crowding. Finishing the simulation.')
+
 print('Total of {:d} pixels were cleaned from crowding fields.'.format(
     int(np.sum(outputs))))
 
@@ -223,5 +243,9 @@ profiler.disable()
 # stats = pstats.Stats(profiler).sort_stats('tottime')
 stats = pstats.Stats(profiler)
 stats.dump_stats(param['results_path'] + '/cProfile_data.txt')
+logging.warning('Start to export results.')
 
 export_results(param['export_path'], param['results_path']) # param['copy_html_path'])
+
+logging.warning('Results were exported and code will close.')
+

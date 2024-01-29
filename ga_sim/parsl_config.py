@@ -28,7 +28,7 @@ def get_config(key):
             max_workers=28, # number of cores per node
             provider=SlurmProvider(
                 partition='cpu_small',
-                nodes_per_block=2, # number of nodes
+                nodes_per_block=4, # number of nodes
                 # cores_per_node=52,
                 cmd_timeout=240, # duration for which the provider will wait for a command to be invoked on a remote system
                 launcher=SrunLauncher(debug=True, overrides=''),
