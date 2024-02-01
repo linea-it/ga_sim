@@ -72,10 +72,10 @@ download_iso(param['padova_version_code'], param['survey'], 0.0152 * (10 ** para
 logging.warning('Isochrone was downloaded.')
 
 iso_info = np.loadtxt(param['file_iso'], usecols=(1, 2, 3, 26), unpack=True)
-FeH_iso, logAge_iso, m_ini_iso, g_iso = iso_info[0][0], iso_info[1][0], iso_info[2], iso_info[3]
+# FeH_iso, logAge_iso, m_ini_iso, g_iso = iso_info[0][0], iso_info[1][0], iso_info[2], iso_info[3]
 
-print('[Fe/H]={:.2f}, Age={:.2f} Gyr'.format(FeH_iso, 10**(logAge_iso-9)))
-mM_mean = (param['mM_max'] + param['mM_min']) / 2.
+# print('[Fe/H]={:.2f}, Age={:.2f} Gyr'.format(FeH_iso, 10**(logAge_iso-9)))
+# mM_mean = (param['mM_max'] + param['mM_min']) / 2.
 
 logging.warning('Starting to create footprint.')
 
@@ -164,17 +164,22 @@ def faker_app(MV, frac_bin, x0, y0, rexp, ell_, pa, mM, hpx, param, mag1_, err1_
 
     from ga_sim import faker
 
-    faker(MV, frac_bin, x0, y0, rexp, ell_, pa, mM, hpx, param['cmin'], param['cmax'],
-          param['mmin'], param['mmax'], mag1_, err1_, err2_, param['file_iso'], output_path, mag_ref_comp,
-          comp_mag_ref, comp_mag_max)
+    bbbb = faker(MV, frac_bin, x0, y0, rexp, ell_, pa, mM, hpx, param['cmin'], param['cmax'],
+                 param['mmin'], param['mmax'], mag1_, err1_, err2_, param['file_iso'], output_path, mag_ref_comp,
+                 comp_mag_ref, comp_mag_max)
+    return bbbb
 
 fake_clus_path = param['results_path'] + '/fake_clus'
 
+results_faker = []
+
 for i in range(len(hp_sample_un)):
 
-    faker_app(MV[i], param['frac_bin'], RA_pix[i], DEC_pix[i], r_exp[i], ell[i],
+    results_faker.append(faker_app(MV[i], param['frac_bin'], RA_pix[i], DEC_pix[i], r_exp[i], ell[i],
               pa[i], mM[i], hp_sample_un[i], param, mag1_, err1_, err2_, fake_clus_path,
-              param['mag_ref_comp'], param['comp_mag_ref'], param['comp_mag_max'])
+              param['mag_ref_comp'], param['comp_mag_ref'], param['comp_mag_max']))
+
+outputs = [r.result() for r in results_faker]
 
 logging.warning('Simulated cluster files were created. Now start to join simulated clusters and field stars.')
 

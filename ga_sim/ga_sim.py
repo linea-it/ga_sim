@@ -1559,6 +1559,9 @@ def unc(mag, mag_table, err_table):
     return err_interp
 
 
+def calc_MV(Mg, Mr):
+    return Mg - 0.58*(Mg - Mr) - 0.01
+
 def faker(
     MV,
     frac_bin,
@@ -1684,12 +1687,15 @@ def faker(
     n_stars /= np.sum(n_stars)
 
     idx_n_stars_int = []
-    flux_tot_account = []
+    flux_tot_account_g = [1.e-300]
+    flux_tot_account_r = [1.e-300]
 
-    while -2.5 * np.log10(np.sum(flux_tot_account)) > MV + mM:
+    while calc_MV(-2.5 * np.log10(np.sum(flux_tot_account_r)), -2.5 * np.log10(np.sum(flux_tot_account_r))) > MV + mM - 1:
         idx = np.random.choice(len(mass), 1, p=n_stars)[0]
         idx_n_stars_int.append(idx)
-        flux_tot_account.append(10.0 ** (-0.4 * mag1[idx]))
+        flux_tot_account_g.append(10.0 ** (-0.4 * mag1[idx]))
+        flux_tot_account_r.append(10.0 ** (-0.4 * mag2[idx]))
+        # print('FLUX G AND R:', flux_tot_account_g, flux_tot_account_r)
 
     n_stars_int = np.bincount(idx_n_stars_int)
     total_stars_int = np.sum(n_stars_int)
@@ -1767,28 +1773,35 @@ def faker(
     filename = "%s_clus.dat" % str(hpx)
     filepath = Path(output_path, filename)
 
-    flux_final_account = [1.e-300]
+    flux_final_account_g = [1.e-300]
+    flux_final_account_r = [1.e-300]
+
     with open(filepath, "w") as out_file:
-        while -2.5 * np.log10(np.sum(flux_final_account)) > MV + mM:
-            ii = 0
-            cor = star[ii, 2] + star[ii, 3] - (star[ii, 5] + star[ii, 6])
-            mmag = star[ii, 2] + star[ii, 3]
+        ii = 0
+        iii = star_comp[ii]
+        while (calc_MV(-2.5 * np.log10(np.sum(flux_final_account_g)), -2.5 * np.log10(np.sum(flux_final_account_r))) > MV + mM)&(ii < len(star_comp)):
+            # print(calc_MV(-2.5 * np.log10(np.sum(flux_final_account_g)), -2.5 * np.log10(np.sum(flux_final_account_r))), MV + mM)
+            cor = star[iii, 2] + star[iii, 3] - (star[iii, 5] + star[iii, 6])
+            mmag = star[iii, 2] + star[iii, 3]
+            flux_final_account_g.append(10.0 ** (-0.4 * (star[iii, 2] + star[iii, 3])))
+            flux_final_account_r.append(10.0 ** (-0.4 * (star[iii, 5] + star[iii, 6])))
             if (mmag < mmax) & (mmag > mmin) & (cor >= cmin) & (cor <= cmax):
                 print(
-                    star[ii, 0],
-                    star[ii, 1],
-                    star[ii, 2] + star[ii, 3],
-                    star[ii, 4],
-                    star[ii, 5] + star[ii, 6],
-                    star[ii, 7],
-                    star[ii, 3],
-                    star[ii, 6],
-                    star[ii, 8],
+                    star[iii, 0],
+                    star[iii, 1],
+                    star[iii, 2] + star[iii, 3],
+                    star[iii, 4],
+                    star[iii, 5] + star[iii, 6],
+                    star[iii, 7],
+                    star[iii, 3],
+                    star[iii, 6],
+                    star[iii, 8],
                     file=out_file,
                 )
-                flux_final_account.append(10.0 ** (-0.4 * (star[ii, 2] + star[ii, 3])))
             ii += 1
     out_file.close()
+
+    return 1
 
 
 def join_cat(
