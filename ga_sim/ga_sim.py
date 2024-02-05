@@ -977,12 +977,12 @@ def gen_clus_file(param):
         # angles based on limits required, and printing to file objects.dat.
         mM = mM_min + np.random.rand(len(hp_sample_un)) * (mM_max - mM_min)
         dist = 10 ** ((mM / 5) + 1)
-        r_exp = 10 ** (
-	    log10_rexp_min
-	    * (log10_rexp_max / log10_rexp_min) ** np.random.rand(len(hp_sample_un))
-	)
+        # r_exp = 10 ** (
+	#    log10_rexp_min
+	#    * (log10_rexp_max / log10_rexp_min) ** np.random.rand(len(hp_sample_un))
+	# )
 
-        if Mv_hlr_from_data:
+        if Mv_hlr_from_data == 'True':
             MV, hlr_prev = mv_hlr_from_data(len(hp_sample_un), param, Mv_min, Mv_max)
             # mass = 10 ** (-0.2907 * (Mv_prev + mM) + 7.96)
             r_exp = [(10 ** i) / 1.7 for i in hlr_prev]
@@ -1474,6 +1474,8 @@ def faker_bin(total_bin, file_in, mM, mmax):
     n_col_magr = cols.index('rmag')
 
     mass, int_IMF, mag1, mag2 = np.loadtxt(file_in, usecols=(3, 4, n_col_magg, n_col_magr), unpack=True)
+    
+    mass, int_IMF, mag1, mag2 = mass[:-1], int_IMF[:-1], mag1[:-1], mag2[:-1]
 
     mag1 += mM #5 * np.log10(dist) - 5
     mag2 += mM #5 * np.log10(dist) - 5
@@ -1481,58 +1483,41 @@ def faker_bin(total_bin, file_in, mM, mmax):
     cond = mag1 <= mmax + 0.5
     mass, mag1, mag2, int_IMF = mass[cond], mag1[cond], mag2[cond], int_IMF[cond]
 
-    # bin in mass (solar masses)
-    binmass = 5.0e-4
+    mass = np.concatenate((mass, ([mass[-1]])))
+    mag1 = np.concatenate((mag1, ([mag1[-1]])))
+    mag2 = np.concatenate((mag2, ([mag2[-1]])))
+    int_IMF = np.concatenate((int_IMF, ([int_IMF[-1]])))
 
-    IMF = IMF_('Kroupa')
+    n_stars = [j - i for i, j in zip(int_IMF[0:-1], int_IMF[1::])]
+    n_stars.append(int_IMF[-2] - int_IMF[-1])
+    n_stars /= mass
+    n_stars[-1] = 1.0e-19
+    n_stars /= np.sum(n_stars)
 
-    # amostra is an array with the amount of stars in each bin of mass. ex.: [2,3,4,1,2]
-    massmin = np.min(mass)
-    massmax = np.max(mass)
-    bins_mass = int((massmax - massmin) / binmass)
-    amostra = np.zeros(bins_mass)
+    idx_n_stars_int = []
+    flux_tot_account_g = [1.e-300]
+    flux_tot_account_r = [1.e-300]
 
-    for i in range(bins_mass):
-        if (i * binmass) + massmin <= IMF["IMF_mass_break"]:
-            amostra[i] = round((massmin + i * binmass) ** (IMF["IMF_alpha_1"]))
-        else:
-            amostra[i] = round((massmin + i * binmass) ** (IMF["IMF_alpha_2"]))
-    # Soma is the total amount of stars (float), the sum of amostra
-    soma = np.sum(amostra)
-    # Now normalizing the array amostra
-    # for idx, num in enumerate(amostra):
-    amostra = np.multiply(amostra, total_bin / soma)
+    idx = np.random.choice(len(mass), total_bin, p=n_stars)
 
-    massa_calculada = np.zeros(int(total_bin))
+    n_stars_int = np.bincount(idx)
+    # total_stars_int = np.sum(n_stars_int)
 
-    count = 0
-
-    for j in range(bins_mass):  # todos os intervalos primarios de massa
-        for k in range(
-            int(amostra[j])
-        ):  
-            if amostra[j] != 0:
-            # amostra() eh a amostra de estrelas dentro do intervalo de massa
-                massa_calculada[count] = (
-                    massmin + (j * binmass) + (k * binmass / amostra[j])
-                )
-                # massa calculada eh a massa de cada estrela
-                count += 1
-
-    # mag1 mag1err unc1 mag2 mag2err unc2
+    # mag1 mag2 mass
     binaries = np.zeros((total_bin, 3))
 
-    for i in range(total_bin):
-        for k in range(len(mass) - 1):  # abre as linhas do arquivo em massa
-            # se a massa estiver no intervalo das linhas
-            if (mass[k] < massa_calculada[i]) & (mass[k + 1] > massa_calculada[i]):
-                # vai abrir tantas vezes quantas forem as estrelas representadas
-                intervalo = (massa_calculada[i] - mass[k]) / (
-                    mass[k + 1] - mass[k]
-                )  # intervalo entre zero e um
-                binaries[i, 0] = mag1[k] - (mag1[k] - mag1[k + 1]) * intervalo
-                binaries[i, 1] = mag2[k] - (mag2[k] - mag2[k + 1]) * intervalo
-                binaries[i, 2] = massa_calculada[i]
+    count = 0
+    for i, j in enumerate(n_stars_int):
+        if j > 0:
+            intervalo = np.random.rand(j)
+            binaries[count:count+j, 0] = mag1[i] - \
+                (mag1[i] - mag1[i + 1]) * intervalo
+            binaries[count:count+j, 1] = mag2[i] - \
+                (mag2[i] - mag2[i + 1]) * intervalo
+            binaries[count:count+j, 2] = mass[i] - \
+                (mass[i] - mass[i + 1]) * intervalo
+            count += j
+
     return binaries[:, 0], binaries[:, 1]
 
 
@@ -1666,10 +1651,12 @@ def faker(
 
     mass, int_IMF, mag1, mag2 = np.loadtxt(file_iso, usecols=(3, 4, n_col_magg, n_col_magr), unpack=True)
 
+    mass, int_IMF, mag1, mag2 = mass[:-1], int_IMF[:-1], mag1[:-1], mag2[:-1]
+
     mag1 += mM
     mag2 += mM
 
-    dist = 10 ** ((mM / 5) + 1)
+    dist = 10. ** ((mM / 5.) + 1.)
     # Warning: cut in mass to avoid faint stars with high errors showing up in the
     # bright part of magnitude. The mass is not the total mass of the cluster,
     # only a lower limit for the total mass.
@@ -1684,6 +1671,7 @@ def faker(
     n_stars = [j - i for i, j in zip(int_IMF[0:-1], int_IMF[1::])]
     n_stars.append(int_IMF[-2] - int_IMF[-1])
     n_stars /= mass
+    n_stars[-1] = 1.0e-19
     n_stars /= np.sum(n_stars)
 
     idx_n_stars_int = []
@@ -1695,7 +1683,6 @@ def faker(
         idx_n_stars_int.append(idx)
         flux_tot_account_g.append(10.0 ** (-0.4 * mag1[idx]))
         flux_tot_account_r.append(10.0 ** (-0.4 * mag2[idx]))
-        # print('FLUX G AND R:', flux_tot_account_g, flux_tot_account_r)
 
     n_stars_int = np.bincount(idx_n_stars_int)
     total_stars_int = np.sum(n_stars_int)
@@ -1710,9 +1697,6 @@ def faker(
             star[count: count + j, 5] = mag2[i] - (mag2[i] - mag2[i + 1]) * intervalo
             star[count: count + j, 8] = mass[i] - (mass[i] - mass[i + 1]) * intervalo
             count += j
-
-    #for i in range(total_stars_int):
-    #    print("init_stars", *star[i,:])
 
     # apply binarity
     # definition of binarity: fb = N_stars_in_binaries / N_total
@@ -1748,6 +1732,8 @@ def faker(
     )
     p_values[star[:, 2] > mmax] = 1.0e-9  # virtually zero
     p_values[star[:, 2] < mag_ref_comp] = 1.0
+    ###############################################################################################
+    # p_values[star[:, 2] < mmin - 5] = 1.0e-90  # virtually zero
 
     star_comp = np.random.choice(
         len(star[:, 0]), total_stars_int, replace=True, p=p_values / np.sum(p_values)
@@ -1778,8 +1764,8 @@ def faker(
 
     with open(filepath, "w") as out_file:
         ii = 0
-        iii = star_comp[ii]
         while (calc_MV(-2.5 * np.log10(np.sum(flux_final_account_g)), -2.5 * np.log10(np.sum(flux_final_account_r))) > MV + mM)&(ii < len(star_comp)):
+            iii = star_comp[ii]
             # print(calc_MV(-2.5 * np.log10(np.sum(flux_final_account_g)), -2.5 * np.log10(np.sum(flux_final_account_r))), MV + mM)
             cor = star[iii, 2] + star[iii, 3] - (star[iii, 5] + star[iii, 6])
             mmag = star[iii, 2] + star[iii, 3]
@@ -2152,18 +2138,32 @@ def write_sim_clus_features(param, hp_sample_un, mM):
                     file=out_file,
                 )
             else:
-                print(
-                    "{:d} {:d} {:.2f} {:.2f} {:d} {:.2f} {:.2f}".format(
-                        hp_sample_un[i],
-                        len(RA[cond_clus]),
-                        M_abs_V,
-                        SNR,
-                        len(RA_clean[cond_clus_clean]),
-                        M_abs_V_clean,
-                        SNR_clean,
-                    ),
-                    file=out_file,
-                )
+                if len(RA_clean[cond_clus_clean]) == 0:
+                    print(
+			"{:d} {:d} {:.2f} {:.2f} {:d} {:.2f} {:.2f}".format(
+			    hp_sample_un[i],
+			    len(RA[cond_clus]),
+			    M_abs_V,
+			    SNR,
+			    0,
+			    999,
+			    SNR_clean,
+			),
+                        file=out_file,
+                    )
+                else:
+                    print(
+                        "{:d} {:d} {:.2f} {:.2f} {:d} {:.2f} {:.2f}".format(
+                            hp_sample_un[i],
+                            len(RA[cond_clus]),
+                            M_abs_V,
+                            SNR,
+                            len(RA_clean[cond_clus_clean]),
+                            M_abs_V_clean,
+                            SNR_clean,
+                        ),
+                        file=out_file,
+                    )
     out_file.close()
 
     return filepath
