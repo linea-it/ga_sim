@@ -989,7 +989,7 @@ def gen_clus_file(param):
         else:
             # mass = 10**(log10_mass_min * (log10_mass_max / log10_mass_min)
             #            ** np.random.rand(len(hp_sample_un)))
-            r_exp = 10**(log10_rexp_min * (log10_rexp_max / log10_rexp_min)
+            r_exp = 10**(log10_rexp_min + (log10_rexp_max - log10_rexp_min)
 	                ** np.random.rand(len(hp_sample_un)))
             MV = Mv_min + (Mv_max - Mv_min) * np.random.rand(len(hp_sample_un))
 
@@ -1234,18 +1234,6 @@ def download_iso(version, phot_system, Z, age, av_ext, IMF_author, out_file, ite
     while (file_is_empty) & (count < iter_max):
         print("Iteration {:d} to download PARSEC isochrone.".format(count + 1))
         try:
-            print("wget -o lixo -Otmp --post-data='submit_form=Submit&cmd_version={}&photsys_file=tab_mag_odfnew/tab_mag_{}.dat&photsys_version=YBC&output_kind=0&output_evstage=1&isoc_isagelog=0&isoc_agelow={:.2e}&isoc_ageupp={:.2e}&isod_dage=0&isoc_ismetlog=0&isoc_zlow={:.6f}&isoc_zupp={:.6f}&isod_dz=0&extinction_av={:.3f}&{}' {}/cgi-bin/cmd_{}".format(
-                        version,
-                        phot_system,
-                        age,
-                        age,
-                        Z,
-                        Z,
-                        av_ext,
-                        main_pars,
-                        webserver,
-                        version,
-            ))
             os.system(
                 (
                     "wget -o lixo -Otmp --post-data='submit_form=Submit&cmd_version={}&photsys_file=tab_mag_odfnew/tab_mag_{}.dat&photsys_version=YBC&output_kind=0&output_evstage=1&isoc_isagelog=0&isoc_agelow={:.2e}&isoc_ageupp={:.2e}&isod_dage=0&isoc_ismetlog=0&isoc_zlow={:.6f}&isoc_zupp={:.6f}&isod_dz=0&extinction_av={:.3f}&{}' {}/cgi-bin/cmd_{}".format(
@@ -1442,7 +1430,7 @@ def apply_err(mag, mag_table, err_table):
     return np.multiply(err_interp, np.random.randn(len(err_interp)))
 
 
-def faker_bin(total_bin, file_in, mM, mmax):
+def faker_bin(total_bin, file_in, mM, mmax, n_col_magg, n_col_magr):
     """Calculates the fraction of binaries in the simulated clusters.
 
     Parameters
@@ -1466,13 +1454,6 @@ def faker_bin(total_bin, file_in, mM, mmax):
     binaries[:,1]
         a list of magnitudes of the binaries in the second band
     """
-    f = open(file_in, "r")
-    cols = f.readlines()
-    cols = cols[11].split()
-    cols.pop(0)
-    n_col_magg = cols.index('gmag')
-    n_col_magr = cols.index('rmag')
-
     mass, int_IMF, mag1, mag2 = np.loadtxt(file_in, usecols=(3, 4, n_col_magg, n_col_magr), unpack=True)
     
     mass, int_IMF, mag1, mag2 = mass[:-1], int_IMF[:-1], mag1[:-1], mag2[:-1]
@@ -1569,6 +1550,8 @@ def faker(
     mag_ref_comp,
     comp_mag_ref,
     comp_mag_max,
+    n_col_magg,
+    n_col_magr
 ):
     """Creates an array with positions, magnitudes, magnitude errors and magnitude
     uncertainties for the simulated stars in two bands.
@@ -1638,17 +1621,6 @@ def faker(
         Completeness (value between 0. and 1.) at the maximum magnitude.
 
     """
-
-    # Cria o diretório de output se não existir
-    os.system("mkdir -p " + output_path)
-
-    f = open(file_iso, "r")
-    cols = f.readlines()
-    cols = cols[11].split()
-    cols.pop(0)
-    n_col_magg = cols.index('gmag')
-    n_col_magr = cols.index('rmag')
-
     mass, int_IMF, mag1, mag2 = np.loadtxt(file_iso, usecols=(3, 4, n_col_magg, n_col_magr), unpack=True)
 
     mass, int_IMF, mag1, mag2 = mass[:-1], int_IMF[:-1], mag1[:-1], mag2[:-1]
@@ -1701,7 +1673,7 @@ def faker(
     # apply binarity
     # definition of binarity: fb = N_stars_in_binaries / N_total
     N_stars_bin = int(total_stars_int / ((2.0 / frac_bin) - 1))
-    mag1_bin, mag2_bin = faker_bin(N_stars_bin, file_iso, mM, mmax)
+    mag1_bin, mag2_bin = faker_bin(N_stars_bin, file_iso, mM, mmax, n_col_magg, n_col_magr)
 
     j = np.random.randint(total_stars_int, size=N_stars_bin)
     k = np.random.randint(N_stars_bin, size=N_stars_bin)

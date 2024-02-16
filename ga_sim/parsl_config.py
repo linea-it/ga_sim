@@ -25,16 +25,16 @@ def get_config(key):
         "linea": HighThroughputExecutor(
             # address=address_by_interface('ib0'),
             label='linea',
-            max_workers=28, # number of cores per node
+            max_workers=100, # number of cores per node
             provider=SlurmProvider(
                 partition='cpu_small',
-                nodes_per_block=4, # number of nodes
+                nodes_per_block=10, # 10 number of nodes
                 # cores_per_node=52,
                 cmd_timeout=240, # duration for which the provider will wait for a command to be invoked on a remote system
                 launcher=SrunLauncher(debug=True, overrides=''),
                 scheduler_options='#SBATCH --propagate ',
                 parallelism=1,
-                walltime='10:00:00',
+                walltime='72:00:00',
                 worker_init=f"source {ga_sim_root_dir}/ga_sim.sh\n"
             ),
         ),
