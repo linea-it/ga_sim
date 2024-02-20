@@ -18,7 +18,6 @@ import os
 import glob
 import parsl
 from parsl.app.app import python_app
-# import condor
 import sys
 import healpy as hp
 import cProfile, pstats
@@ -78,15 +77,7 @@ n_col_magg = cols.index('gmag')
 n_col_magr = cols.index('rmag')
 f.close()
 
-logging.warning('Isochrone was downloaded.')
-
-iso_info = np.loadtxt(param['file_iso'], usecols=(1, 2, 3, 26), unpack=True)
-# FeH_iso, logAge_iso, m_ini_iso, g_iso = iso_info[0][0], iso_info[1][0], iso_info[2], iso_info[3]
-
-# print('[Fe/H]={:.2f}, Age={:.2f} Gyr'.format(FeH_iso, 10**(logAge_iso-9)))
-# mM_mean = (param['mM_max'] + param['mM_min']) / 2.
-
-logging.warning('Starting to create footprint.')
+logging.warning('Isochrone was downloaded. Starting to create footprint.')
 
 # Making footprint
 make_footprint(param)
@@ -131,6 +122,10 @@ if param['survey']== 'des': ftp_infile_path = "/lustre/t1/cl/lsst/gawa_project/a
 files_ftp = glob.glob(param['ftp_path'] + '/*.fits')
 files_DP0_ftp = glob.glob(ftp_infile_path + '/' + str(int(param['nside_infile'])) + '/*.fits')
 
+'''
+Ver se essa parte do DP0 é realmente necessária.
+'''
+
 good_DP0_ftp = []
 
 for ii in files_DP0_ftp:
@@ -161,6 +156,7 @@ outputs = [r.result() for r in res2]
 
 logging.warning('Field stars in pixels was created. Now start to generate cluster files.')
 
+# Creating clusters
 RA_pix, DEC_pix, r_exp, ell, pa, dist, mM, hp_sample_un, MV = gen_clus_file(
     param)
 
