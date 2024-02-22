@@ -19,7 +19,7 @@
     "age_simulation": 1.3e10,
     "MH_simulation": -1.99,
     "av_simulation": 0.000,
-    "Mv_hlr_from_data": "False",
+    "Mv_hlr_from_data": "dg",
     "padova_version_code": "3.6",
     "mM_min": 15.00,
     "mM_max": 20.00,

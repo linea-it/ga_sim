@@ -52,7 +52,7 @@ def rd2d(x, y, xmin, xmax, ymin, ymax, x_steps, y_steps, n_random):
     h, xedges, ydeges, img = plt.hist2d(
         x, y, bins=[x_steps, y_steps], range=[[xmin, xmax], [ymin, ymax]], density=True
     )
-    H = gaussian_filter(h.T, sigma=1)
+    H = gaussian_filter(h.T, sigma=50)
     H /= np.sum(H)
     p = H.flatten()
     n = np.random.choice(np.arange(len(p)), size=n_random, replace=True, p=p)
@@ -65,6 +65,26 @@ def rd2d(x, y, xmin, xmax, ymin, ymax, x_steps, y_steps, n_random):
     x_random += xmin
     y_random += ymin
     return x_random, y_random
+
+
+
+def read_ref_dg(param):
+    Mv, rhl_pc = np.loadtxt(param["cat_dg"], usecols=(8, 10), unpack=True)
+
+    return Mv, rhl_pc
+
+
+def read_ref_gc(param):
+
+    mM_GC, Mv_GC, rhl_arcmin_GC = np.loadtxt(
+	param["cat_gc"], usecols=(5, 6, 7), unpack=True
+    )
+
+    dist_GC = 10.0 ** (1 + (mM_GC / 5))
+
+    rhl_pc_GC = (rhl_arcmin_GC / (57.3 * 60)) * dist_GC
+
+    return Mv_GC, rhl_pc_GC
 
 
 def read_ref(param):
@@ -85,14 +105,19 @@ def read_ref(param):
     return Mv, rhl_pc
 
 
-def mv_hlr_from_data(N_desired, param, Mv_min=-14.0, Mv_max=2):
+def mv_hlr_from_data(N_desired, param, prop_from_data, Mv_min=-14.0, Mv_max=2):
 
     globals().update(param)
 
     rhl_pc_min = 10.**(1.7 * log10_rexp_min)
     rhl_pc_max = 10.**(1.7 * log10_rexp_max)
 
-    Mv, rhl_pc = read_ref(param)
+    if prop_from_data == 'True':
+        Mv, rhl_pc = read_ref(param)
+    elif prop_from_data == 'dg':
+        Mv, rhl_pc = read_ref_dg(param)
+    elif prop_from_data == 'gc':
+        Mv, rhl_pc = read_ref_gc(param)
     
     log10_rhl_pc = np.log10(rhl_pc)
 
@@ -982,13 +1007,10 @@ def gen_clus_file(param):
 	#    * (log10_rexp_max / log10_rexp_min) ** np.random.rand(len(hp_sample_un))
 	# )
 
-        if Mv_hlr_from_data == 'True':
-            MV, hlr_prev = mv_hlr_from_data(len(hp_sample_un), param, Mv_min, Mv_max)
-            # mass = 10 ** (-0.2907 * (Mv_prev + mM) + 7.96)
+        if Mv_hlr_from_data != 'False':
+            MV, hlr_prev = mv_hlr_from_data(len(hp_sample_un), param, Mv_hlr_from_data, Mv_min, Mv_max)
             r_exp = [(10 ** i) / 1.7 for i in hlr_prev]
         else:
-            # mass = 10**(log10_mass_min * (log10_mass_max / log10_mass_min)
-            #            ** np.random.rand(len(hp_sample_un)))
             r_exp = 10**(log10_rexp_min + (log10_rexp_max - log10_rexp_min)
 	                ** np.random.rand(len(hp_sample_un)))
             MV = Mv_min + (Mv_max - Mv_min) * np.random.rand(len(hp_sample_un))
