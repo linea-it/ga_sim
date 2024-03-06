@@ -52,7 +52,7 @@ def rd2d(x, y, xmin, xmax, ymin, ymax, x_steps, y_steps, n_random):
     h, xedges, ydeges, img = plt.hist2d(
         x, y, bins=[x_steps, y_steps], range=[[xmin, xmax], [ymin, ymax]], density=True
     )
-    H = gaussian_filter(h.T, sigma=50)
+    H = gaussian_filter(h.T, sigma=10)
     H /= np.sum(H)
     p = H.flatten()
     n = np.random.choice(np.arange(len(p)), size=n_random, replace=True, p=p)
@@ -696,7 +696,7 @@ def clean_input_cat_dist(
         DEC_ = DEC[cond]
         dist = dist_ang(RA_, DEC_, j, DEC[i])
         if len(dist) > 1:
-            if sorted(dist)[1] > max_dist_arcsec / 3600:
+            if sorted(dist)[1] >= max_dist_arcsec / 3600.:
                 clean_idx.append(i)
         else:
             clean_idx.append(i)
@@ -1202,8 +1202,8 @@ def dist_ang(ra1, dec1, ra_ref, dec_ref):
     costheta = np.sin(np.radians(dec_ref)) * np.sin(np.radians(dec1)) + np.cos(
         np.radians(dec_ref)
     ) * np.cos(np.radians(dec1)) * np.cos(np.radians(ra1 - ra_ref))
-    dist_ang = np.arccos(costheta)
-    return np.rad2deg(dist_ang)
+    dist_ang_ = np.arccos(costheta)
+    return np.rad2deg(dist_ang_)
 
 
 def download_iso(version, phot_system, Z, age, av_ext, IMF_author, out_file, iter_max):
@@ -1733,6 +1733,8 @@ def faker(
         len(star[:, 0]), total_stars_int, replace=True, p=p_values / np.sum(p_values)
     )
 
+    star_comp_un = np.unique(star_comp)
+
     rexp_deg = (180 / np.pi) * np.arctan(rexp / dist)
 
     r = exp_prof(total_stars_int, rexp_deg)
@@ -1758,8 +1760,8 @@ def faker(
 
     with open(filepath, "w") as out_file:
         ii = 0
-        while (calc_MV(-2.5 * np.log10(np.sum(flux_final_account_g)), -2.5 * np.log10(np.sum(flux_final_account_r))) > MV + mM)&(ii < len(star_comp)):
-            iii = star_comp[ii]
+        while (calc_MV(-2.5 * np.log10(np.sum(flux_final_account_g)), -2.5 * np.log10(np.sum(flux_final_account_r))) > MV + mM)&(ii < len(star_comp_un)):
+            iii = star_comp_un[ii]
             # print(calc_MV(-2.5 * np.log10(np.sum(flux_final_account_g)), -2.5 * np.log10(np.sum(flux_final_account_r))), MV + mM)
             cor = star[iii, 2] + star[iii, 3] - (star[iii, 5] + star[iii, 6])
             mmag = star[iii, 2] + star[iii, 3]

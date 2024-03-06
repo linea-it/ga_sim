@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+#SBATCH -p cpu_long
+#SBATCH -J ga_sim
+#SBATCH -N 1
+#SBATCH -n 1
+#SBATCH --propagate
+
+
 from ga_sim import (
     make_footprint,
     write_sim_clus_features,
@@ -66,8 +74,8 @@ os.makedirs(param['results_path'] + '/fake_clus', exist_ok=True)
 logging.warning('Folders were created and download of isochrone will start.')
 
 # Downloading isochrone and printing some information
-download_iso(param['padova_version_code'], param['survey'], 0.0152 * (10 ** param['MH_simulation']),
-             param['age_simulation'], param['av_simulation'], param["IMF_author"], param['file_iso'], 5)
+# download_iso(param['padova_version_code'], param['survey'], 0.0152 * (10 ** param['MH_simulation']),
+#             param['age_simulation'], param['av_simulation'], param["IMF_author"], param['file_iso'], 5)
 
 f = open(param['file_iso'], "r")
 cols = f.readlines()
