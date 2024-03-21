@@ -1003,15 +1003,15 @@ def gen_clus_file(param):
         mM = mM_min + np.random.rand(len(hp_sample_un)) * (mM_max - mM_min)
         dist = 10 ** ((mM / 5) + 1)
         # r_exp = 10 ** (
-	#    log10_rexp_min
-	#    * (log10_rexp_max / log10_rexp_min) ** np.random.rand(len(hp_sample_un))
-	# )
+        #    log10_rexp_min
+        #    * (log10_rexp_max / log10_rexp_min) ** np.random.rand(len(hp_sample_un))
+        # )
 
         if Mv_hlr_from_data != 'False':
             MV, hlr_prev = mv_hlr_from_data(len(hp_sample_un), param, Mv_hlr_from_data, Mv_min, Mv_max)
             r_exp = [(10 ** i) / 1.7 for i in hlr_prev]
         else:
-            r_exp = 10**(log10_rexp_min + (log10_rexp_max - log10_rexp_min)
+            r_exp = (1/1.7) * 10**(log10_hlr_min + (log10_hlr_max - log10_hlr_min)
 	                ** np.random.rand(len(hp_sample_un)))
             MV = Mv_min + (Mv_max - Mv_min) * np.random.rand(len(hp_sample_un))
 
